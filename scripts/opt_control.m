@@ -39,20 +39,20 @@ X = zeros(n, n_drones, H);
 U = zeros(m, n_drones, H);
 
 % Initial conditions (x0, y0, z0)
-X(:, 1, 1) = [0; 0; 0; zeros(n - 3, 1)];
-X(:, 2, 1) = [4; 0; 0; zeros(n - 3, 1)];
+X(:, 1, 1) = [-2; 0.5; 0.5; zeros(n - 3, 1)];
+X(:, 2, 1) = [-2; -0.5; -0.5; zeros(n - 3, 1)];
 
 % Reference position for each drone (xf, yf, zf)
 X_ref = zeros(n, n_drones);
-X_ref(1:3, 1) = [4; 4; 4];   % drone 1 target
-X_ref(1:3, 2) = [0; 2; 3];   % drone 2 target
+X_ref(1:3, 1) = [2; -0.5; -0.5];   % drone 1 target
+X_ref(1:3, 2) = [2; 0.5; 0.5];   % drone 2 target
 
 % Drone radius
-r_drone = 0.75;
+r_drone = 0.6;
 
 % Obstacle positions and radii
-P_objects = [[2; 2; 3], [4; 0.5; 2]]; % Array of column vectors (x, y, z)
-r_objects = [1, 0.8];
+P_objects = [[0.3; -0.25; 0.25], [0.3; 0.25; -0.5]]; % Array of column vectors (x, y, z)
+r_objects = [0.3;0.3];
 
 % Data log
 x_log = cell(n_drones, 1);
@@ -126,20 +126,32 @@ end
 %% Plot results
 
 % 3D plot settings
-figure; hold on; grid on; view(45,45);
-xlim([0 5]); ylim([0 5]); zlim([0 5]);
+figure; hold on;
 xlabel('$x$ (m)','Interpreter','latex');
 ylabel('$y$ (m)','Interpreter','latex');
 zlabel('$z$ (m)','Interpreter','latex');
 title('\textbf{Multi-Drone trajectories with obstacle avoidance}', 'Interpreter','latex');
-axis equal;
+grid on;
+view([-50, 15]);
+axis equal
+daspect([1 1 1])
+pbaspect([1 1 1])
+xlim([-2.5 2.5]); ylim([-1 1]); zlim([-1 1]);
+
 
 % 3D trajectory plot
 colors = lines(n_drones);
 for d = 1:n_drones
     xd = x_log{d};
-    scatter3(xd(1, :), xd(2, :), xd(3, :), 20, colors(d, :), 'filled');
+    scatter3(xd(1, :), xd(2, :), xd(3, :), 10, colors(d, :), 'filled');
 end
+
+% --- Obstacles as translucent spheres ---
+% [xs, ys, zs] = sphere(30);
+% surf(r_objects.*xs + xo1(1), r_objects.*ys + xo1(2), r_objects.*zs + xo1(3), ...
+%     'FaceColor', 'interp', 'FaceAlpha', 0.8, 'EdgeColor', 'none');
+% surf(r_objects.*xs + xo2(1), r_objects.*ys + xo2(2), r_objects.*zs + xo2(3), ...
+%     'FaceColor', 'interp', 'FaceAlpha', 0.8, 'EdgeColor', 'none');
 
 % Plot obstacles
 for j = 1:n_objects
