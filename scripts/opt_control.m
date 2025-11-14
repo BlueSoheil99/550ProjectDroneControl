@@ -21,8 +21,6 @@ Q = diag([0.1; 0.1; 10; 0.01; 0.01; 0.01; 0.01; 0.01; 1; 0.1; 0.1; 0.1]);
 %% Scenario Setup
 
 % Simulation variables
-t = 0;             % time variable
-T = 4;             % total simulation time
 H = 5;             % prediction horizon
 n_drones  = 2;     % number of drones
 n_objects = 2;     % number of obstacles
@@ -31,134 +29,299 @@ n_objects = 2;     % number of obstacles
 m_drone = 0.063; % kg
 I_x = 0.5829e-4; % kgm^2
 I_y = 0.7169e-4; % kgm^2
-I_z = 1.000e-4; % kgm^2
-g = 9.8; % m/s^2
+I_z = 1.000e-4;  % kgm^2
+g = 9.8;         % m/s^2
 
 % Initialize states and control inputs
 X = zeros(n, n_drones, H);
 U = zeros(m, n_drones, H);
 
 % Initial conditions (x0, y0, z0)
-X(:, 1, 1) = [-2; 0.5; 0.5; zeros(n - 3, 1)];
-X(:, 2, 1) = [-2; -0.5; -0.5; zeros(n - 3, 1)];
+% X(:, 1, 1) = [-2; 0.5; 0.5; zeros(n - 3, 1)];
+% X(:, 2, 1) = [-2; -0.5; -0.5; zeros(n - 3, 1)];
+X(:, 1, 1) = [0; 0; 0; zeros(n - 3, 1)];
+X(:, 2, 1) = [4; 0; 0; zeros(n - 3, 1)];
 
-% Reference position for each drone (xf, yf, zf)
+% Goal position for each drone (xf, yf, zf)
+X_goal = zeros(n, n_drones);
+% X_goal(1:3, 1) = [2; -0.5; -0.5];   % drone 1 target
+% X_goal(1:3, 2) = [2; 0.5; 0.5];     % drone 2 target
+X_goal(1:3, 1) = [4; 4; 4];   % drone 1 target
+X_goal(1:3, 2) = [0; 2; 3];   % drone 2 target
+
+% Unit vector for shortest path of each drone
+s = zeros(n, n_drones);
+
+% Reference position
 X_ref = zeros(n, n_drones);
-X_ref(1:3, 1) = [2; -0.5; -0.5];   % drone 1 target
-X_ref(1:3, 2) = [2; 0.5; 0.5];   % drone 2 target
 
-% Drone radius
-r_drone = 0.6;
+% Setup
+d = 0.75;                  % waypoint distance
+for i = 1:n_drones
+    p0 = X(1:3, i, 1);     % initial position of drone i
+    pf = X_goal(1:3, i);   % goal position of drone i
+    v  = pf - p0;          % direction vector
+    s(1:3, i) = v/norm(v); % normalized direction
+
+    X_ref(1:3, i) = p0;
+end
+
+% Safety radii
+r_safe = 0.6;
 
 % Obstacle positions and radii
-P_objects = [[0.3; -0.25; 0.25], [0.3; 0.25; -0.5]]; % Array of column vectors (x, y, z)
-r_objects = [0.3;0.3];
+% P_objects = [[0.3; -0.25; 0.25], [0.3; 0.25; -0.5]]; % Array of column vectors (x, y, z)
+% R_objects = [0.3, 0.3]; % Radii of objects
+P_objects = [[2; 2; 3], [4; 0.5; 2]]; % Array of column vectors (x, y, z)
+R_objects = [1, 0.8]; % Radii of objects
 
 % Data log
 x_log = cell(n_drones, 1);
-for d = 1:n_drones
-    x_log{d} = X(:, d, 1);
+for i = 1:n_drones
+    x_log{i} = X(:, i, 1);
 end
 
 %% Simulation of response
-while t <= T
-    % Predict linearized state-dynamics for each drone using baseline controller (LQR)
-    for d = 1:n_drones
-        for k = 1:(H-1)
-            % Basline control input via LQR
-            U(:, d, k) = -K*(X(:, d, k) - X_ref(:, d));
-            U(1, d, k) = U(1, d, k) + m_drone*g;
+iter = 0;
+waypoint = true;
+
+while norm(X(:, 1, 1) - X_goal(:, 1)) > 0.01 || norm(X(:, 2, 1) - X_goal(:, 2)) > 0.01
+    % Compute waypoint
+    if mod(iter, 30) == 0 && waypoint
+        for i = 1:n_drones
+            X_ref(:, i) = X_ref(:, i) + d*s(:, i);
+
+            if norm(X_ref(:, i) - X_goal(:, i)) < d
+                X_ref(:, i) = X_goal(:, i);
+            end
+        end
+
+        if norm(X_ref(:, i) - X_goal(:, i)) == 0
+            waypoint = false;
+        end
+    end
     
-            % Linearized dynamics
-            X(:, d, k+1) = Ad*X(:, d, k) + Bd*U(:, d, k);
+    %% Predict linearized state-dynamics for each drone using baseline controller (LQR)
+    for i = 1:n_drones
+        for j = 1:(H-1)
+            % Basline control input via LQR
+            U(:, i, j) = -K*(X(:, i, j) - X_ref(:, i));
+
+            % Linearized state dynamics
+            X(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j);
+        end
+    end
+    
+    %% Collision and obstacle detection
+    active = false;
+
+    for i = 1:n_drones
+        % Drone i position (x, y, z)
+        P_i = X(1:3, i, end);
+        
+        % Drone-to-object check
+        for j = 1:n_objects
+            % Object j position (x, y, z)
+            P_j = P_objects(:, j);
+
+            % Distance check
+            d_ij = norm(P_i - P_j);
+            if d_ij <= r_safe
+                active = true;
+                % disp(['Drone ', num2str(i), ' near obstacle ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
+                break;
+            end
+        end
+        
+        if active; break; end
+
+        % Drone-to-drone check
+        for j = (i+1):n_drones
+            % Drone j position (x, y, z)
+            P_j = X(1:3, j, end);
+
+            % Distance check
+            d_ij = norm(P_i - P_j);
+            if d_ij <= r_safe
+                active = true;
+                % disp(['Drone ', num2str(i), ' near drone ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
+                break;
+            end
+        end
+
+        if active; break; end
+    end
+
+    %% Apply optimization flag true
+    if active
+        % disp('Optimization active');
+        
+        % Optimization
+        k = 1;
+        dP_k1 = drone_opt(X, k + 1, r_safe, P_objects, R_objects, n_drones, n_objects); % 1-step ahead for z velocity
+        dP_k3 = drone_opt(X, k + 3, r_safe, P_objects, R_objects, n_drones, n_objects); % 3-step ahead for x, y velocity
+
+        for i = 1:n_drones
+            %% Approach 1
+            % %% 4-step ahead approach for x, y
+            % 
+            % % Extract x, y velocities
+            % C = zeros(2, 12);
+            % C(1, 7) = 1;
+            % C(2, 8) = 1;
+            % 
+            % % Compute difference in nominal and optimal input
+            % r = 3;
+            % M = C*Ad^(r - 1)*Bd;
+            % dv = dP_k3(1:2, i, end) - X(7:8, i, k + r);
+            % du = pinv(M)*dv;
+            % 
+            % %% 2-step ahead approach for z
+            % 
+            % % Extract z velocities
+            % C = zeros(1, 12);
+            % C(1, 9) = 1;
+            % 
+            % % Compute difference in nominal and optimal input
+            % r = 1;
+            % M = C*Ad^(r - 1)*Bd;
+            % dv = dP_k1(3, i, end) - X(9, i, k + r);
+            % du = du + pinv(M)*dv;
+            % du(1) = du(1) + m_drone*g;
+            
+            %% Approach 2
+            % G = diag([Ts/m, -g*Ts^3/I_x, g*Ts^3/I_y, 0]);
+            % G = diag([Ts/m, 0, 0, 0]); % This worked better
+            % dv = [dP_k1(3, i); flipud(dP_k3(1:2, i)); 0];
+            % du = G*dv;
+
+            % G = diag([Ts/m, -g*Ts^3/I_x, g*Ts^3/I_y, 0]);
+            % disp(G*dv);
+            
+            %% Approach 3
+
+            % 4-step ahead approach for x, y
+
+            % Extract x, y velocities
+            C = zeros(1, 12);
+            C(1, 7) = 1;
+            C(2, 8) = 1;
+
+            % Back-solve for [~, U_phi, U_theta, ~]
+            r = 4;
+            k = 1;
+            sums = Ad^(r - 1)*(Ad - eye(n))*X(:, i, k);
+            for k = 1:(r-1)
+                sums = sums + Ad^(r - 1 - k)*Bd*U(:, i, k);
+            end
+            for k = 1:(r-2)
+                sums = sums - Ad^(r - 2 - k)*Bd*U(:, i, k);
+            end
+            M = C*Ad^(r - 2)*(Ad - eye(n))*Bd;
+            u = pinv(M)*(Ts*dP_k3(1:2, i) - C*sums);
+            
+            % 2-step ahead approach for z
+            dv = (dP_k3(3, i) - X(9, i, 1))/Ts;
+            u(1) = m_drone*(dv + g);
+            
+            % Update input for U_phi
+            u(4) = U(4, i, 1);
+
+            %% Compute dynamics
+
+            %% If using non-linear dynamics
+            % u0 = U(:, i, k) + du; % Approach 2
+            u0 = u;
+            x0 = X(:, i, 1);
+            x0 = x0 + Ts*f(x0, u0);
+            % disp(u0);
+            
+            %% If using linearized dynamics
+            % u0 = U(:, i, k) + du; % Approach 2
+            % u0(1) = u0(1) - m_drone*g;
+            % x0 = X(:, i, 1);
+            % x0 = Ad*x0 + Bd*u0;
+    
+            %% Update variables and log trajectory
+            X(:, i, 1) = x0;
+            x_log{i} = [x_log{i}, x0];
+        end
+    else
+        % disp('LQR active');
+
+        for i = 1:n_drones
+            %% If using non-linear dynamics
+            % u0 = U(:, i, 1);
+            % x0 = X(:, i, 1);
+            % x0 = x0 + Ts*f(x0, u0);
+            % disp(u0);
+
+            %% If using linearized dynamics
+            x0 = X(:, i, 2);
+            % disp(u0);
+            
+            %% Update variables and log trajectory
+            X(:, i, 1) = x0;
+            x_log{i} = [x_log{i}, x0];
         end
     end
 
-    %% Apply optimization
     for i = 1:n_drones
-        %% Optimize velocity at k + 1 (2-step ahead for z)
-        k = 1;
-        dP = drone_opt(X, k + 1, r_drone, r_objects, P_objects, n_drones, n_objects);
+        % Drone i position (x, y, z)
+        P_i = X(1:3, i, 1);
+        
+        % Drone-to-object check
+        for j = 1:n_objects
+            % Object j position (x, y, z)
+            P_j = P_objects(:, j);
 
-        % Apply finite differences and linearized dynamics to find U_coll (related to z)
-        zdot = X(9, i, :);
-        zddot = (dP(3, i) - zdot(k))/Ts;
-        U_coll = (zddot + g)*m_drone;
-        
-        %% Optimize velocity at k + 3 (4-step ahead for x, y)
-        k = 1;
-        dP = drone_opt(X, k + 3, r_drone, r_objects, P_objects, n_drones, n_objects);
-        
-        % Apply finite differences and linearized dynamics to find U_phi (related to y)
-        ydot = X(8, i, :);
-        yddot = (-ydot(k) + 3*ydot(k + 1) - 3*ydot(k + 2) + dP(2, i))/Ts^3;
-        U_phi = yddot*(-I_x/g);
-        
-        % Apply finite differences and linearized dynamics to find U_theta (related to x)
-        xdot = X(7, i, :);
-        xddot = (-xdot(k) + 3*xdot(k + 1) - 3*xdot(k + 2) + dP(1, i))/Ts^3;
-        U_theta = xddot*(I_y/g);
-        
-        %% Two-step ahead
+            % Distance check
+            d_ij = norm(P_i - P_j);
+            if d_ij <= r_safe
+                disp(['Drone ', num2str(i), ' near obstacle ', num2str(j), '. Constraint violated.']);
+            end
+        end
 
-        % Apply finite differences and linearized dynamics to find U_psi (related to psi)
-        psidot = X(12, i, :);
-        psiddot = (psidot(k + 1) - psidot(k))/Ts;
-        U_psi = psiddot*(I_z);
-        
-        %% Compute dynamics
-        u0 = [U_coll; U_phi; U_theta; U_psi];
-        % x0 = X(:, i, 1) + Ts*f(X(:, i, 1), u0);
-        x0 = Ad*X(:, i, 1) + Bd*u0;
+        % Drone-to-drone check
+        for j = (i+1):n_drones
+            % Drone j position (x, y, z)
+            P_j = X(1:3, j, 1);
 
-        % Update variables
-        X(:, i, 1) = x0;
-        disp(u0)
-
-        % Log trajectory
-        x_log{i} = [x_log{i}, x0];
+            % Distance check
+            d_ij = norm(P_i - P_j);
+            if d_ij <= r_safe
+                disp(['Drone ', num2str(i), ' near drone ', num2str(j), '. Constraint violated.']);
+            end
+        end
     end
-    
-    % Increment time
-    t = t + Ts;
+
+    %% Increment iteration
+    iter = iter + 1;
 end
 
 %% Plot results
 
 % 3D plot settings
-figure; hold on;
+figure; hold on; grid on; view(45, 45);
 xlabel('$x$ (m)','Interpreter','latex');
 ylabel('$y$ (m)','Interpreter','latex');
 zlabel('$z$ (m)','Interpreter','latex');
 title('\textbf{Multi-Drone trajectories with obstacle avoidance}', 'Interpreter','latex');
-grid on;
-view([-50, 15]);
-axis equal
-daspect([1 1 1])
-pbaspect([1 1 1])
-xlim([-2.5 2.5]); ylim([-1 1]); zlim([-1 1]);
-
+axis equal;
 
 % 3D trajectory plot
 colors = lines(n_drones);
-for d = 1:n_drones
-    xd = x_log{d};
-    scatter3(xd(1, :), xd(2, :), xd(3, :), 10, colors(d, :), 'filled');
+for i = 1:n_drones
+    xd = x_log{i};
+    scatter3(xd(1, :), xd(2, :), xd(3, :), 20, colors(i, :), 'filled');
 end
-
-% --- Obstacles as translucent spheres ---
-% [xs, ys, zs] = sphere(30);
-% surf(r_objects.*xs + xo1(1), r_objects.*ys + xo1(2), r_objects.*zs + xo1(3), ...
-%     'FaceColor', 'interp', 'FaceAlpha', 0.8, 'EdgeColor', 'none');
-% surf(r_objects.*xs + xo2(1), r_objects.*ys + xo2(2), r_objects.*zs + xo2(3), ...
-%     'FaceColor', 'interp', 'FaceAlpha', 0.8, 'EdgeColor', 'none');
 
 % Plot obstacles
 for j = 1:n_objects
     [Xs, Ys, Zs] = sphere(30);
-    Xs = 0.75*r_objects(j)*Xs + P_objects(1, j);
-    Ys = 0.75*r_objects(j)*Ys + P_objects(2, j);
-    Zs = 0.75*r_objects(j)*Zs + P_objects(3, j);
+    Xs = R_objects(j)*Xs + P_objects(1, j);
+    Ys = R_objects(j)*Ys + P_objects(2, j);
+    Zs = R_objects(j)*Zs + P_objects(3, j);
     surf(Xs, Ys, Zs, 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'FaceColor', [0 0.5 1]);
 end
 
