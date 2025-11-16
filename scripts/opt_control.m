@@ -77,8 +77,12 @@ R_objects = [1, 0.8]; % Radii of objects
 
 % Data log
 x_log = cell(n_drones, 1);
+u_log = cell(n_drones, 1);
+u_lqr_log = cell(n_drones, 1);
 for i = 1:n_drones
     x_log{i} = X(:, i, 1);
+    u_log{i} = U(:, i, 1);
+    u_lqr_log{i} = U(:, i, 1);
 end
 
 %% Simulation of response
@@ -106,10 +110,11 @@ while norm(X(:, 1, 1) - X_goal(:, 1)) > 0.01 || norm(X(:, 2, 1) - X_goal(:, 2)) 
         for j = 1:(H-1)
             % Basline control input via LQR
             U(:, i, j) = -K*(X(:, i, j) - X_ref(:, i));
-
+            % U(1, i, j) = U(1, i, j) + m_drone*g;
             % Linearized state dynamics
             X(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j);
         end
+        u_lqr_log{i} = [u_lqr_log{i}, U(:, i, 1)];
     end
     
     %% Collision and obstacle detection
@@ -245,6 +250,7 @@ while norm(X(:, 1, 1) - X_goal(:, 1)) > 0.01 || norm(X(:, 2, 1) - X_goal(:, 2)) 
             %% Update variables and log trajectory
             X(:, i, 1) = x0;
             x_log{i} = [x_log{i}, x0];
+            u_log{i} = [u_log{i}, u0];
         end
     else
         % disp('LQR active');
@@ -258,11 +264,13 @@ while norm(X(:, 1, 1) - X_goal(:, 1)) > 0.01 || norm(X(:, 2, 1) - X_goal(:, 2)) 
 
             %% If using linearized dynamics
             x0 = X(:, i, 2);
+            u0 = U(:, i, 1);
             % disp(u0);
             
             %% Update variables and log trajectory
             X(:, i, 1) = x0;
             x_log{i} = [x_log{i}, x0];
+            u_log{i} = [u_log{i}, u0];
         end
     end
 
@@ -296,6 +304,7 @@ while norm(X(:, 1, 1) - X_goal(:, 1)) > 0.01 || norm(X(:, 2, 1) - X_goal(:, 2)) 
     end
 
     %% Increment iteration
+    disp(['iter ',num2str(iter), ' done'])
     iter = iter + 1;
 end
 
@@ -326,3 +335,35 @@ for j = 1:n_objects
 end
 
 legend(arrayfun(@(d) sprintf('Drone %d',d), 1:n_drones, 'UniformOutput',false));
+
+%% plot controls
+
+time = (0:iter-1) * Ts;
+colors = lines(n_drones);
+
+for u_row = 1:m 
+    figure; hold on; grid on;
+    
+    for i = 1:n_drones
+        % Solid = applied control (from u_log)
+        plot(time(1:200), u_log{i}(u_row, 1:200), ...
+             'LineWidth', 1.8, 'Color', colors(i,:));
+
+        % Dashed = LQR baseline
+        plot(time(1:200), u_lqr_log{i}(u_row, 1:200), ...
+             '--', 'LineWidth', 1.8, 'Color', colors(i,:));
+    end
+    
+    % --- Legend ---
+    legend_entries = cell(1, 2*n_drones);
+    for i = 1:n_drones
+        legend_entries{2*i-1} = sprintf('Drone %d - applied', i);
+        legend_entries{2*i}   = sprintf('Drone %d - LQR', i);
+    end
+    legend(legend_entries, 'Location', 'bestoutside');
+
+    % --- Labels and title ---
+    xlabel('Time [s]');
+    ylabel(sprintf('$U_{%d}(t)$', u_row), 'Interpreter', 'latex');
+    title(sprintf('Control Input $U_{%d}(t)$ per Drone', u_row), 'Interpreter', 'latex');
+end
