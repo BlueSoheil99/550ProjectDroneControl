@@ -52,6 +52,8 @@ X_goal(1:3, 2) = [2; 0.5; 0.5];     % drone 2 target
 % Safety radii
 r_safe = 0.3;
 r_drone = 0.6;
+% r_safe = 0.0;
+% r_drone = 0.0;
 
 % Obstacle positions and radii
 P_objects = [[0.3; -0.25; 0.25], [0.3; 0.25; -0.5]]; % Array of column vectors (x, y, z)
@@ -138,7 +140,7 @@ while any(vecnorm(X(:,:,1) - X_goal, 2, 1) > 0.01)
             d_ij = norm(P_i - P_j);
             if d_ij <= (R_objects(j) + r_safe)
                 active = true;
-                % disp(['Drone ', num2str(i), ' near obstacle ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
+                disp([num2str(iter), ':  Drone ', num2str(i), ' near obstacle ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
                 break;
             end
         end
@@ -154,7 +156,7 @@ while any(vecnorm(X(:,:,1) - X_goal, 2, 1) > 0.01)
             d_ij = norm(P_i - P_j);
             if d_ij <= r_drone
                 active = true;
-                % disp(['Drone ', num2str(i), ' near drone ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
+                disp([num2str(iter), ':  Drone', num2str(i), ' near drone ', num2str(j), ' (distance = ', num2str(d_ij, '%.2f'), ')']);
                 break;
             end
         end
@@ -168,8 +170,8 @@ while any(vecnorm(X(:,:,1) - X_goal, 2, 1) > 0.01)
         
         % Optimization
         k = 1;
-        dP_k1 = drone_opt(X, k + 1, r_drone, r_safe, P_objects, R_objects, n_drones, n_objects); % 1-step ahead for z velocity
-        dP_k3 = drone_opt(X, k + 3, r_drone, r_safe, P_objects, R_objects, n_drones, n_objects); % 3-step ahead for x, y velocity
+        dP_k1 = drone_opt(X, k + 1, r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts); % 1-step ahead for z velocity
+        dP_k3 = drone_opt(X, k + 3, r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts); % 3-step ahead for x, y velocity
 
         for i = 1:n_drones
             % Apply finite differences and linearized dynamics to find U_coll (related to z)
@@ -267,7 +269,7 @@ axis equal;
 colors = lines(n_drones);
 for i = 1:n_drones
     xd = x_log{i};
-    scatter3(xd(1, :), xd(2, :), xd(3, :), 20, colors(i, :), 'filled');
+    scatter3(xd(1, :),  xd(2, :), xd(3, :), 50 , colors(i, :), '*');
 end
 
 % Plot obstacles
