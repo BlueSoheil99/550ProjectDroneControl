@@ -36,7 +36,6 @@ function dP_sol = drone_opt(X, H, r_drone, r_safe, P_objects, R_objects, n_drone
                 alpha = 100*h_ij^3;
 
                 opti.subject_to(grad_h'*dP_ik + alpha >= 0);
-                opti.subject_to(h_ij >= 0);
             end
         end
 
@@ -66,7 +65,6 @@ function dP_sol = drone_opt(X, H, r_drone, r_safe, P_objects, R_objects, n_drone
                 alpha = 100*h_ij^3;
 
                 opti.subject_to(grad_h'*dP_stack + alpha >= 0);
-                opti.subject_to(h_ij >= 0);
             end
         end
     end
