@@ -2,7 +2,7 @@ clear; close all; clc;
 
 %% Optimizer option
 opts = ["cvx_single", "cvx_mpc", "casdi"];
-opt  = "casdi";
+opt  = "cvx_mpc";
 
 %% Define drone optimizer
 idx = -1;
@@ -13,7 +13,9 @@ for i = 1:length(opts)
     end
 end
 
-drone_opt = str2func("drone_opt_" + opts(idx));
+if idx ~= -1
+    drone_opt = str2func("drone_opt_" + opts(idx));
+end
 
 %% Sampling rate
 Ts = 0.02;
@@ -38,7 +40,7 @@ Q = diag([0.1; 0.1; 10; 0.01; 0.01; 0.01; 0.01; 0.01; 1; 0.1; 0.1; 0.1]);
 % Simulation variables
 H = 5;             % prediction horizon
 n_drones  = 2;     % number of drones
-n_objects = 3;     % number of obstacles
+n_objects = 2;     % number of obstacles
 
 % Constants
 m_drone = 0.063; % kg
@@ -54,25 +56,19 @@ U = zeros(m, n_drones, H);
 % Initial conditions (x0, y0, z0)
 X(:, 1, 1) = [-2; 0.5; 0.5; zeros(n - 3, 1)];
 X(:, 2, 1) = [-2; -0.5; -0.5; zeros(n - 3, 1)];
-% X(:, 1, 1) = [0; 0; 0; zeros(n - 3, 1)];
-% X(:, 2, 1) = [4; 0; 0; zeros(n - 3, 1)];
 
 % Goal position for each drone (xf, yf, zf)
 X_goal = zeros(n, n_drones);
 X_goal(1:3, 1) = [4; -0.5; -0.5];   % drone 1 target
 X_goal(1:3, 2) = [4; 0.5; 0.5];     % drone 2 target
-% X_goal(1:3, 1) = [4; 4; 4];   % drone 1 target
-% X_goal(1:3, 2) = [0; 2; 3];   % drone 2 target
 
 % Safety radii
-r_safe = 0.01;
+r_safe = 0.0;
 r_drone = 0.6;
 
 % Obstacle positions and radii
-P_objects = [[0.1; -0.25; 0.05], [0.3; 0.25; -0.5], [2.25; 0.25; 0]]; % Array of column vectors (x, y, z)
+P_objects = [[0.3; -0.25; 0.25], [0.3; 0.25; -0.5]]; % Array of column vectors (x, y, z)
 R_objects = [0.3, 0.3, 0.3]; % Radii of objects
-% P_objects = [[2; 2; 3], [4; 0.5; 2]]; % Array of column vectors (x, y, z)
-% R_objects = [1, 0.8]; % Radii of objects
 
 % Unit vector for shortest path of each drone
 s = zeros(n, n_drones);
@@ -95,6 +91,9 @@ end
 x_log = cell(n_drones, 1);
 u_log = cell(n_drones, 1);
 u_lqr_log = cell(n_drones, 1);
+d_obj_log = cell(n_drones, n_objects);
+d_drone_log = cell(n_drones, n_drones);
+
 for i = 1:n_drones
     x_log{i} = X(:, i, 1);
     u_log{i} = U(:, i, 1);
@@ -110,6 +109,8 @@ terminated = false(n_drones,1);
 
 %% Main loop
 while any(~terminated)
+    disp(['Iteration: ', num2str(iter)])
+
     % Check per-drone termination
     for i = 1:n_drones
         if ~terminated(i)
@@ -139,64 +140,65 @@ while any(~terminated)
     
     %% Predict linearized state-dynamics for each drone using baseline controller (LQR)
     for i = 1:n_drones
-        if terminated(i), continue; end   % <-- skip terminated drones
-
+        if terminated(i), continue; end
+        
         for j = 1:(H-1)
             % Basline control input via LQR
             U(:, i, j) = -K*(X(:, i, j) - X_ref(:, i));
 
             % Linearized state dynamics
             X(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j);
-            U(1, i, j) = U(1, i, j) + m_drone*g; % For completeness
+            
+            if opt ~= "lqr"
+                U(1, i, j) = U(1, i, j) + m_drone*g; % For completeness
+            end
         end
         
         u_lqr_log{i} = [u_lqr_log{i}, U(:, i, 1)];
     end
     
-    %% Collision and obstacle detection
+    %% Optimization flag
     active = false;
-
+    
+    %% Collision and obstacle detection
     for i = 1:n_drones
         if terminated(i), continue; end
-
+        
         % Drone i position (x, y, z)
         P_i = X(1:3, i, end);
         
         % Drone-to-object check
         for j = 1:n_objects
-            % Object j position (x, y, z)
             P_j = P_objects(:, j);
-
-            % Distance check
             d_ij = norm(P_i - P_j);
+            d_obj_log{i, j} = [d_obj_log{i, j}, d_ij];
             if d_ij <= (R_objects(j) + r_safe)
                 active = true;
+                % disp(['Drone ', num2str(i), ' near obstacle ', num2str(j), '. Constraint violated.']);
                 break;
             end
         end
         
-        if active; break; end
+        if active, break; end
 
         % Drone-to-drone check
         for j = (i+1):n_drones
             if terminated(j), continue; end
-
-            % Drone j position (x, y, z)
             P_j = X(1:3, j, end);
-
-            % Distance check
             d_ij = norm(P_i - P_j);
+            d_drone_log{i, j} = [d_drone_log{i, j}, d_ij];
             if d_ij <= r_drone
                 active = true;
+                % disp(['Drone ', num2str(i), ' near drone ', num2str(j), '. Constraint violated.']);
                 break;
             end
         end
 
-        if active; break; end
+        if active, break; end
     end
 
     %% Apply optimization when needed
-    if active
+    if active && opt ~= "lqr"
         % disp('Optimization active');
         
         % Optimization
@@ -205,7 +207,7 @@ while any(~terminated)
         dP_k3 = drone_opt(X, k + 3, r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts); % 3-step ahead for x, y velocity
 
         for i = 1:n_drones
-            if terminated(i), continue; end   % <-- skip terminated drones
+            if terminated(i), continue; end
             k = 0;
             
             % Apply finite differences and linearized dynamics to find U_coll (related to z)
@@ -238,7 +240,6 @@ while any(~terminated)
             x_log{i} = [x_log{i}, x0];
             u_log{i} = [u_log{i}, u0];
         end
-
     else
         % disp('LQR active');
 
@@ -248,15 +249,17 @@ while any(~terminated)
             %% Compute linearized dynamics for LQR
             x0 = X(:, i, 2);
             u0 = U(:, i, 1);
-            
+
             %% Update variables and log trajectory
             X(:, i, 1) = x0;
             x_log{i} = [x_log{i}, x0];
             u_log{i} = [u_log{i}, u0];
         end
     end
-
-    %% Constraint violation warnings
+    
+    active = false;
+    
+    %% Collision and obstacle detection check
     for i = 1:n_drones
         if terminated(i), continue; end
         
@@ -267,6 +270,7 @@ while any(~terminated)
         for j = 1:n_objects
             P_j = P_objects(:, j);
             d_ij = norm(P_i - P_j);
+            d_obj_log{i, j} = [d_obj_log{i, j}, d_ij];
             if d_ij <= (R_objects(j) + r_safe)
                 disp(['Drone ', num2str(i), ' near obstacle ', num2str(j), '. Constraint violated.']);
             end
@@ -277,6 +281,7 @@ while any(~terminated)
             if terminated(j), continue; end
             P_j = X(1:3, j, 1);
             d_ij = norm(P_i - P_j);
+            d_drone_log{i, j} = [d_drone_log{i, j}, d_ij];
             if d_ij <= r_drone
                 disp(['Drone ', num2str(i), ' near drone ', num2str(j), '. Constraint violated.']);
             end
@@ -291,71 +296,244 @@ disp([num2str(iter), ' iterations'])
 
 %% Plot results
 
-% 3D plot settings
-figure; hold on; grid on; view(45, 45);
-xlabel('$x$ (m)', 'Interpreter', 'latex');
-ylabel('$y$ (m)', 'Interpreter', 'latex');
-zlabel('$z$ (m)', 'Interpreter', 'latex');
-title('\textbf{Multi-Drone trajectories with obstacle avoidance}', 'Interpreter', 'latex');
-axis equal;
+do_plot = true;
 
-% 3D trajectory plot
-colors = lines(n_drones);
-for i = 1:n_drones
-    xd = x_log{i};
-    scatter3(xd(1, :), xd(2, :), xd(3, :), 20, colors(i, :), 'filled');
-end
+%% ============================================================
+%  3D Trajectory Plot
+% ============================================================
 
-% Plot obstacles
-for j = 1:n_objects
-    [Xs, Ys, Zs] = sphere(30);
-    Xs = R_objects(j)*Xs + P_objects(1, j);
-    Ys = R_objects(j)*Ys + P_objects(2, j);
-    Zs = R_objects(j)*Zs + P_objects(3, j);
-    surf(Xs, Ys, Zs, 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'FaceColor', [0 0.5 1]);
-end
+views = [[-50, 25]; [50, 25]];
+for v = 1:size(views,1)
 
-legend(arrayfun(@(d) sprintf('Drone %d',d), 1:n_drones, 'UniformOutput',false));
+    fig = figure('Visible','off'); hold on; grid on;
+    view(views(v, 1), views(v, 2));
 
-%% Plot control inputs
+    xlabel('$x$ [m]','Interpreter','latex');
+    ylabel('$y$ [m]','Interpreter','latex');
+    zlabel('$z$ [m]','Interpreter','latex');
+    axis equal;
 
-do_plot = false;
-if do_plot
+    % Make z-order respect creation order, not depth
+    ax = gca;
+    ax.SortMethod = 'childorder';
+
     colors = lines(n_drones);
 
+    % Pre-store positions for start/end markers
+    start_pts = zeros(3,n_drones);
+    end_pts   = zeros(3,n_drones);
+
+    % ---- Trajectories first ----
+    h_drones = gobjects(n_drones,1);
+    for i = 1:n_drones
+        xd = x_log{i};
+        start_pts(:,i) = xd(1:3,1);
+        end_pts(:,i)   = xd(1:3,end);
+
+        h_drones(i) = scatter3(xd(1,:), xd(2,:), xd(3,:), ...
+                               5, colors(i,:), 'filled');   % smaller trajectory markers
+    end
+
+    % ---- Obstacles second ----
+    for j = 1:n_objects
+        [Xs, Ys, Zs] = sphere(20);
+        Xs = R_objects(j)*Xs + P_objects(1, j);
+        Ys = R_objects(j)*Ys + P_objects(2, j);
+        Zs = R_objects(j)*Zs + P_objects(3, j);
+
+        C = Zs;
+        s = surf(Xs, Ys, Zs, C);
+        s.EdgeColor = 'k';
+        s.FaceColor = 'interp';
+        s.FaceAlpha = 0.4;
+
+        text(P_objects(1, j), P_objects(2, j), P_objects(3, j) + R_objects(j)*0.75, ...
+             sprintf('Obj. %d', j), ...
+             'HorizontalAlignment', 'center', ...
+             'Interpreter', 'latex', ...
+             'FontSize', 8, ...
+             'FontWeight', 'bold');
+    end
+
+    colormap(parula);
+    shading interp;
+
+    % ---- Start/End markers LAST (so they sit on top in childorder) ----
+    h_start = gobjects(n_drones,1);
+    h_end   = gobjects(n_drones,1);
+
+    for i = 1:n_drones
+        h_start(i) = scatter3(start_pts(1,i), start_pts(2,i), start_pts(3,i), ...
+                              10, 'g', 'filled', 'o', ...
+                              'MarkerEdgeColor','k', 'LineWidth',0.7);
+
+        h_end(i)   = scatter3(end_pts(1,i), end_pts(2,i), end_pts(3,i), ...
+                              10, 'r', 'filled', 'o', ...
+                              'MarkerEdgeColor','k', 'LineWidth',0.7);
+    end
+
+    % ---- Legend ----
+    legend([h_drones; h_start(1); h_end(1)], ...
+        [arrayfun(@(d) sprintf('Drone %d',d), 1:n_drones, 'UniformOutput', false), ...
+         {'Start'}, {'End'}], ...
+        'Interpreter','latex');
+
+    exportgraphics(fig, "3D_trajectory_" + opt + "_view" + v + ".pdf", ...
+                   'ContentType','vector');
+
+    close(fig);
+end
+
+if do_plot && opt ~= "lqr"
+    %% ============================================================
+    %  Control Input Plots
+    % ============================================================
+    
+    u_labels = {'$U_{\mathrm{coll}}$', '$U_{\phi}$', '$U_{\theta}$', '$U_{\psi}$'};
+    colors = lines(n_drones);
+    
     for u_row = 1:m
-        
-        figure; hold on; grid on;
-        
+        fig = figure('Visible','off'); hold on; grid on;
+    
         for i = 1:n_drones
-            % lengths of logs
-            len_u     = size(u_log{i},     2);
-            len_ulqr  = size(u_lqr_log{i}, 2);
-            
-            % time axes for each log
-            time_u    = (0:len_u-1)    * Ts;
-            time_ulqr = (0:len_ulqr-1) * Ts;
-
-            % --- Plot applied control ---
-            plot(time_u, u_log{i}(u_row, :), ...
-                'LineWidth', 1.8, 'Color', colors(i,:));
-
-            % --- Plot LQR baseline ---
-            plot(time_ulqr, u_lqr_log{i}(u_row, :), ...
-                '--', 'LineWidth', 1.8, 'Color', colors(i,:));
+            time_u = (0:size(u_log{i},2)-1)*Ts;
+            time_lqr = (0:size(u_lqr_log{i},2)-1)*Ts;
+            plot(time_u, u_log{i}(u_row,:), 'LineWidth',1.8, 'Color', colors(i,:));
+            plot(time_lqr, u_lqr_log{i}(u_row,:), '--', 'LineWidth',1.8, 'Color', colors(i,:));
         end
-
-        % --- Legend ---
-        legend_entries = cell(1, 2*n_drones);
+    
+        legend_entries = cell(1,2*n_drones);
         for i = 1:n_drones
-            legend_entries{2*i-1} = sprintf('Drone %d - applied', i);
+            legend_entries{2*i-1} = sprintf('Drone %d - Optimal control', i);
             legend_entries{2*i}   = sprintf('Drone %d - LQR', i);
         end
-        legend(legend_entries, 'Location', 'bestoutside');
-
-        % --- Labels ---
-        xlabel('Time [s]');
-        ylabel(sprintf('$U_{%d}(t)$', u_row), 'Interpreter', 'latex');
-        title(sprintf('Control Input $U_{%d}(t)$ per Drone', u_row), 'Interpreter', 'latex');
+        legend(legend_entries, 'Location','bestoutside');
+    
+        ylabel([u_labels{u_row} '(t)'],'Interpreter','latex');
+        xlabel('Time, $t$ [s]','Interpreter','latex');
+    
+        exportgraphics(fig, "control_input" + u_row + "_" + opt + ".pdf");
     end
+    
+    %% ============================================================
+    %  State vs State-Derivative Plots (Per Drone)
+    % ============================================================
+    
+    state_labels = {'$x$','$y$','$z$','$\phi$','$\theta$','$\psi$', ...
+                    '$\dot{x}$','$\dot{y}$','$\dot{z}$', ...
+                    '$\dot{\phi}$','$\dot{\theta}$','$\dot{\psi}$'};
+    
+    for i = 1:n_drones
+        xdata = x_log{i};
+        T = size(xdata,2);
+        time = (0:T-1)*Ts;
+    
+        fig = figure('Visible','off');
+    
+        for k = 1:6
+            subplot(3,2,k); hold on; grid on;
+            plot(time, xdata(k,:), 'LineWidth',1.6);
+            plot(time, xdata(k+6,:), 'LineWidth',1.6);
+            xlabel('Time, $t$ [s]','Interpreter','latex');
+            ylabel(state_labels{k},'Interpreter','latex');
+            legend({state_labels{k}, state_labels{k+6}}, 'Interpreter','latex');
+        end
+    
+        exportgraphics(fig, "drone" + i + "_state_transitions_" + opt + ".pdf");
+    end
+    
+    %% ============================================================
+    %  2x2 Triple-State Overview (Per Drone)
+    % ============================================================
+    
+    triples = {
+        [1 2 3],      {'$x$','$y$','$z$'},                              'Positions';
+        [7 8 9],      {'$\dot{x}$','$\dot{y}$','$\dot{z}$'},            'Linear velocities';
+        [4 5 6],      {'$\phi$','$\theta$','$\psi$'},                   'Euler angles';
+        [10 11 12],   {'$\dot{\phi}$','$\dot{\theta}$','$\dot{\psi}$'}, 'Angular velocities'
+    };
+    
+    for drone = 1:n_drones
+        xdata = x_log{drone};
+        time = (0:size(xdata,2)-1)*Ts;
+    
+        fig = figure('Visible','off');
+    
+        for sp = 1:4
+            idxs = triples{sp,1};
+            labels = triples{sp,2};
+            group_label = triples{sp,3};
+    
+            subplot(2,2,sp); hold on; grid on;
+    
+            for k = 1:3
+                plot(time, xdata(idxs(k),:), 'LineWidth',1.4);
+            end
+    
+            ylabel(group_label,'Interpreter','latex');
+            xlabel('Time, $t$ [s]','Interpreter','latex');
+            legend(labels,'Interpreter','latex');
+        end
+    
+        exportgraphics(fig, "drone" + i + "_states_" + opt + ".pdf");
+    end
+    
+    %% ============================================================
+    %  Drone–Object Distances
+    % ============================================================
+    
+    colors = lines(n_drones);
+    fig = figure('Visible','off');
+    
+    for j = 1:n_objects
+        subplot(n_objects,1,j); hold on; grid on;
+    
+        for i = 1:n_drones
+            dvec = d_obj_log{i,j};
+            time = (0:length(dvec)-1)*Ts;
+            plot(time, dvec, 'LineWidth',1.5, 'Color', colors(i,:));
+        end
+    
+        yline(r_safe + R_objects(j), 'r--', 'LineWidth',1.4);
+    
+        ylabel('$d_{ij}$ [m]','Interpreter','latex');
+        title(sprintf('Distance to Object %d', j),'Interpreter','latex');
+    
+        leg = cell(1,n_drones+1);
+        for i = 1:n_drones, leg{i} = sprintf('Drone %d', i); end
+        leg{end} = 'Minimum safe distance';
+        legend(leg, 'Interpreter','latex');
+    end
+    
+    exportgraphics(fig, "drone_obj_dist_" + opt + ".pdf");
+    
+    %% ============================================================
+    %  Drone–Drone Distances (Unique Pairs)
+    % ============================================================
+    
+    colors = lines(n_drones);
+    fig = figure('Visible','off'); hold on; grid on;
+    
+    h_list = [];
+    leg_list = {};
+    
+    for i = 1:n_drones
+        for j = (i+1):n_drones
+            dvec = d_drone_log{i,j};
+            time = (0:length(dvec)-1)*Ts;
+            h = plot(time, dvec, 'LineWidth',1.5, 'Color', colors(i,:));
+            h_list(end+1) = h;
+            leg_list{end+1} = sprintf('Drone %d to Drone %d', i, j);
+        end
+    end
+    
+    h_safe = yline(r_drone, 'r--', 'LineWidth',1.4);
+    h_list(end+1) = h_safe;
+    leg_list{end+1} = 'Minimum drone separation';
+    
+    legend(h_list, leg_list, 'Interpreter','latex');
+    xlabel('Time, $t$ [s]','Interpreter','latex');
+    ylabel('$d_{ij}$ [m]','Interpreter','latex');
+    
+    exportgraphics(fig, "drone_drone_dist_" + opt + ".pdf");
 end
