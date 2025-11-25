@@ -13,15 +13,15 @@ classdef helper
     %% ===========================================================
     % Constructor
     methods
-        function obj = helper(r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts, opt)
-            obj.r_drone   = r_drone;
-            obj.r_safe    = r_safe;
-            obj.P_objects = P_objects;
-            obj.R_objects = R_objects;
-            obj.n_drones  = n_drones;
-            obj.n_objects = n_objects;
-            obj.Ts        = Ts;
-            obj.opt       = opt;
+        function self = helper(r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts, opt)
+            self.r_drone   = r_drone;
+            self.r_safe    = r_safe;
+            self.P_objects = P_objects;
+            self.R_objects = R_objects;
+            self.n_drones  = n_drones;
+            self.n_objects = n_objects;
+            self.Ts        = Ts;
+            self.opt       = opt;
         end
     end
     
@@ -190,46 +190,46 @@ classdef helper
     methods
         %% ===========================================================
         % Drone optimization, single point
-        function dP_opt = drone_opt_cvx_single(obj, X, H)
-            dP_opt = zeros(3, obj.n_drones, H - 1);
+        function dP_opt = drone_opt_cvx_single(self, X, H)
+            dP_opt = zeros(3, self.n_drones, H - 1);
             
             % Optimize from k = 2 to H
             for k = 2:H
                 cvx_begin quiet
                     % Initialize variables
-                    variables dP(3, obj.n_drones)
-                    objective = 0;
+                    variables dP(3, self.n_drones)
+                    obj = 0;
                     constraints = [];
                     
-                    for i = 1:obj.n_drones
+                    for i = 1:self.n_drones
                         %% Compute objective of drones
                         dv = X(7:9, i, k) - dP(:, i);
-                        objective = objective + dv'*dv;
+                        obj = obj + dv'*dv;
                         
                         % Drone i position at timestep k
                         P_i = X(1:3, i, k);
             
                         %% Drone-to-object constraints
-                        for j = 1:obj.n_objects
+                        for j = 1:self.n_objects
                             % Object j position
-                            P_j = obj.P_objects(:, j);
+                            P_j = self.P_objects(:, j);
             
                             % Control barrier function
                             d_ij = P_i - P_j;
-                            h_ij = d_ij'*d_ij - (obj.R_objects(j) + obj.r_safe)^2;
+                            h_ij = d_ij'*d_ij - (self.R_objects(j) + self.r_safe)^2;
                             grad_h = 2*d_ij;
                             alpha = 100*h_ij^3;
                             constraints = [constraints, grad_h'*dP(:, i) + alpha >= 0];
                         end
             
                         %% Drone-to-drone constraints
-                        for j = (i+1):obj.n_drones
+                        for j = (i+1):self.n_drones
                             % Drone j position at timestep k
                             P_j = X(1:3, j, k);
             
                             % Control barrier function
                             d_ij = P_i - P_j;
-                            h_ij = d_ij'*d_ij - obj.r_drone^2;
+                            h_ij = d_ij'*d_ij - self.r_drone^2;
                             grad_h = 2*[d_ij; -d_ij];
                             dP_stack = [dP(:, i); dP(:, j)];
                             alpha = 100*h_ij^3;
@@ -237,7 +237,7 @@ classdef helper
                         end
                     end
             
-                    minimize(objective)
+                    minimize(obj)
                     subject to
                         constraints;
                 cvx_end
@@ -249,44 +249,44 @@ classdef helper
 
         %% ===========================================================
         % Drone optimization, MPC
-        function dP_opt = drone_opt_cvx_mpc(obj, X, H)
+        function dP_opt = drone_opt_cvx_mpc(self, X, H)
             cvx_begin quiet
                 % Initialize variables
-                variables dP(3, obj.n_drones, H - 1)
-                objective = 0;
+                variables dP(3, self.n_drones, H - 1)
+                obj = 0;
                 constraints = [];
                 
                 % Optimize from k = 2 to H
-                for i = 1:obj.n_drones
+                for i = 1:self.n_drones
                     for k = 2:H
                         %% Compute objective of drones
                         dv = X(7:9, i, k) - dP(:, i, k - 1);
-                        objective = objective + dv'*dv;
+                        obj = obj + dv'*dv;
         
                         % Drone i position at timestep k
                         P_i = X(1:3, i, k);
         
                         %% Drone-to-object constraints
-                        for j = 1:obj.n_objects
+                        for j = 1:self.n_objects
                             % Object j position
-                            P_j = obj.P_objects(:, j);
+                            P_j = self.P_objects(:, j);
             
                             % Control barrier function
                             d_ij = P_i - P_j;
-                            h_ij = d_ij'*d_ij - (obj.R_objects(j) + obj.r_safe)^2;
+                            h_ij = d_ij'*d_ij - (self.R_objects(j) + self.r_safe)^2;
                             grad_h = 2*d_ij;
                             alpha = 100*h_ij^3;
                             constraints = [constraints, grad_h'*dP(:, i, k - 1) + alpha >= 0];
                         end
         
                         %% Drone-to-drone constraints
-                        for j = (i+1):obj.n_drones
+                        for j = (i+1):self.n_drones
                             % Drone j position at timestep k
                             P_j = X(1:3, j, k);
         
                             % Control barrier function
                             d_ij = P_i - P_j;
-                            h_ij = d_ij'*d_ij - obj.r_drone^2;
+                            h_ij = d_ij'*d_ij - self.r_drone^2;
                             grad_h = 2*[d_ij; -d_ij];
                             dP_stack = [dP(:, i, k - 1); dP(:, j, k - 1)];
                             alpha = 100*h_ij^3;
@@ -295,7 +295,7 @@ classdef helper
                     end      
                 end
         
-                minimize(objective)
+                minimize(obj)
                 subject to
                     constraints;
             cvx_end
@@ -306,29 +306,29 @@ classdef helper
         
         %% ===========================================================
         % Drone optimization, CasADi
-        function dP_sol = drone_opt_casdi(obj, X, H)
+        function dP_sol = drone_opt_casdi(self, X, H)
             import casadi.*
             opti = Opti();
 
             % Initialize variables
-            dP = opti.variable(3*obj.n_drones, H - 1);
-            objective = 0;
+            dP = opti.variable(3*self.n_drones, H - 1);
+            obj = 0;
         
-            for i = 1:obj.n_drones
+            for i = 1:self.n_drones
                 %% Compute objective of drones
                 for k = 2:H
                     dP_ik = dP(3*(i-1)+1:3*i, k-1);
                     dv = X(7:9, i, k) - dP_ik;
-                    objective = objective + dv'*dv;
+                    obj = obj + dv'*dv;
                 end
         
                 %% Drone-to-object constraints
-                for j = 1:obj.n_objects
+                for j = 1:self.n_objects
                     % Initial drone i position
                     P_i = X(1:3, i, 1);
         
                     % Object position (x, y, z)
-                    P_j = obj.P_objects(:, j);
+                    P_j = self.P_objects(:, j);
                     
                     % Step from k = 2 to H
                     for k = 2:H
@@ -336,11 +336,11 @@ classdef helper
                         dP_ik = dP(3*(i - 1)+1:3*i, k - 1);
         
                         % Update drone i position
-                        P_i = P_i + obj.Ts*dP_ik;
+                        P_i = P_i + self.Ts*dP_ik;
         
                         % Control barrier function constraint
                         d_ij = P_i - P_j;
-                        h_ij = d_ij'*d_ij - (obj.R_objects(j) + obj.r_safe)^2;
+                        h_ij = d_ij'*d_ij - (self.R_objects(j) + self.r_safe)^2;
                         grad_h = 2*d_ij;
                         alpha = 100*h_ij^3;
                         opti.subject_to(grad_h'*dP_ik + alpha >= 0);
@@ -348,7 +348,7 @@ classdef helper
                 end
         
                 %% Drone-to-drone constraints
-                for j = (i+1):obj.n_drones
+                for j = (i+1):self.n_drones
                     % Initial drone i & j position
                     P_i = X(1:3, i, 1);
                     P_j = X(1:3, j, 1);
@@ -360,12 +360,12 @@ classdef helper
                         dP_jk = dP(3*(j - 1)+1:3*j, k-1);
         
                         % Update drone i & j positions
-                        P_i = P_i + obj.Ts*dP_ik;
-                        P_j = P_j + obj.Ts*dP_jk;
+                        P_i = P_i + self.Ts*dP_ik;
+                        P_j = P_j + self.Ts*dP_jk;
         
                         % Control barrier function constraint
                         d_ij = P_i - P_j;
-                        h_ij = d_ij'*d_ij - obj.r_drone^2;
+                        h_ij = d_ij'*d_ij - self.r_drone^2;
                         grad_h = 2*[d_ij; -d_ij];
                         dP_stack = [dP_ik; dP_jk];
                         alpha = 100*h_ij^3;
@@ -374,7 +374,7 @@ classdef helper
                 end
             end
         
-            opti.minimize(objective);
+            opti.minimize(obj);
             opts.ipopt.print_level = 0;
             opts.print_time = false;
             opti.solver('ipopt', opts);
@@ -382,9 +382,9 @@ classdef helper
             dP_flat = sol.value(dP); % size = (3*n_drones) x (H - 1)
             
             % Reshape dP into original 3 x n_drones x (H - 1)
-            dP_sol = zeros(3, obj.n_drones, H - 1);
+            dP_sol = zeros(3, self.n_drones, H - 1);
             
-            for i = 1:obj.n_drones
+            for i = 1:self.n_drones
                 rows = 3*(i - 1)+1:3*i;
                 for k = 1:(H-1)
                     dP_sol(:, i, k) = dP_flat(rows, k);
@@ -394,32 +394,33 @@ classdef helper
         
         %% ===========================================================
         % Drone optimizer
-        function dP_sol = drone_opt(obj, X, H)
+        function dP_sol = drone_opt(self, X, H)
             idx = -1;
             opts = ["cvx_single", "cvx_mpc", "casdi"];
 
             for i = 1:length(opts)
-                if obj.opt == opts(i)
+                if self.opt == opts(i)
                     idx = i;
                 end
             end
             
             if idx ~= -1
                 drone_opt = str2func("drone_opt_" + opts(idx));
-                dP_sol = drone_opt(obj, X, H);
+                dP_sol = drone_opt(self, X, H);
             end
         end
 
         %% ===========================================================
         % 3D trajectories
-        function plotTrajectories(obj, x_log, opt)
+        function plotTrajectories(self, x_log, opt)
             % Camera views
             views = [[-60,35]; [20,35]];
-            colors = lines(obj.n_drones);
+            colors = lines(self.n_drones);
         
             for v = 1:size(views,1)
                 % Figure setup
-                fig = figure('Visible','off'); 
+                fig = figure();
+                
                 hold on; grid on;
                 view(views(v,1), views(v,2));
                 xlabel('$x$ [m]','Interpreter','latex');
@@ -429,13 +430,19 @@ classdef helper
         
                 ax = gca;
                 ax.SortMethod = 'childorder';
-        
+                
+                % Label sizes
+                ax.XLabel.FontSize = 14;
+                ax.YLabel.FontSize = 14;
+                ax.ZLabel.FontSize = 14;
+                ax.GridAlpha = 0.5;
+                
                 % Plot drone trajectories
-                h_drones  = gobjects(obj.n_drones,1);
-                start_pts = zeros(3,obj.n_drones);
-                end_pts   = zeros(3,obj.n_drones);
+                h_drones  = gobjects(self.n_drones,1);
+                start_pts = zeros(3,self.n_drones);
+                end_pts   = zeros(3,self.n_drones);
         
-                for i = 1:obj.n_drones
+                for i = 1:self.n_drones
                     xd = x_log{i};
                     start_pts(:,i) = xd(1:3,1);
                     end_pts(:,i)   = xd(1:3,end);
@@ -446,12 +453,12 @@ classdef helper
                 end
         
                 % Plot obstacles
-                for j = 1:obj.n_objects
+                for j = 1:self.n_objects
                     [Xs, Ys, Zs] = sphere(20);
         
-                    Xs = obj.R_objects(j)*Xs + obj.P_objects(1,j);
-                    Ys = obj.R_objects(j)*Ys + obj.P_objects(2,j);
-                    Zs = obj.R_objects(j)*Zs + obj.P_objects(3,j);
+                    Xs = self.R_objects(j)*Xs + self.P_objects(1,j);
+                    Ys = self.R_objects(j)*Ys + self.P_objects(2,j);
+                    Zs = self.R_objects(j)*Zs + self.P_objects(3,j);
         
                     s = surf(Xs, Ys, Zs, Zs);
                     s.EdgeColor = 'k';
@@ -459,8 +466,8 @@ classdef helper
                     s.FaceAlpha = 0.45;
         
                     text( ...
-                        obj.P_objects(1,j), obj.P_objects(2,j), ...
-                        obj.P_objects(3,j) + 0.75*obj.R_objects(j), ...
+                        self.P_objects(1,j), self.P_objects(2,j), ...
+                        self.P_objects(3,j) + 0.75*self.R_objects(j), ...
                         sprintf('Obj. %d', j), ...
                         'Interpreter','latex', ...
                         'HorizontalAlignment','center', ...
@@ -471,10 +478,10 @@ classdef helper
                 colormap(parula)
         
                 % Plot start/end markers
-                h_start = gobjects(obj.n_drones,1);
-                h_end   = gobjects(obj.n_drones,1);
+                h_start = gobjects(self.n_drones,1);
+                h_end   = gobjects(self.n_drones,1);
         
-                for i = 1:obj.n_drones
+                for i = 1:self.n_drones
                     h_start(i) = scatter3( ...
                         start_pts(1,i), start_pts(2,i), start_pts(3,i), ...
                         10, 'g', 'filled', 'o', 'MarkerEdgeColor','k');
@@ -487,12 +494,12 @@ classdef helper
                 % Legend
                 legend( ...
                     [h_drones; h_start(1); h_end(1)], ...
-                    [ arrayfun(@(d) sprintf('Drone %d',d), 1:obj.n_drones, 'UniformOutput', false), ...
+                    [ arrayfun(@(d) sprintf('Drone %d',d), 1:self.n_drones, 'UniformOutput', false), ...
                       {'Start'}, {'End'} ], ...
                     'Interpreter','latex', ...
                     'Location','southoutside', ...
-                    'Orientation','horizontal');
-        
+                    'Orientation','horizontal', 'FontSize', 14);
+                
                 % Export figure
                 exportgraphics(fig, ...
                     "figures/3D_trajectory_" + opt + "_view" + v + ".pdf", ...
@@ -502,13 +509,13 @@ classdef helper
 
         %% ===========================================================
         % Control inputs (4x1 tiledlayout)
-        function plotControlInputs(obj, u_log, u_lqr_log, opt)
+        function plotControlInputs(self, u_log, u_lqr_log, opt)
             % Control input labels and units
             u_labels = {'$U_{\mathrm{coll}}$', '$U_{\phi}$', '$U_{\theta}$', '$U_{\psi}$'};
             u_units  = {'$\mathrm{N}$', '$\mathrm{N}\cdot\mathrm{m}$', ...
                         '$\mathrm{N}\cdot\mathrm{m}$', '$\mathrm{N}\cdot\mathrm{m}$'};
       
-            colors = lines(obj.n_drones);
+            colors = lines(self.n_drones);
             m = 4;
         
             % Create figure
@@ -516,8 +523,8 @@ classdef helper
             t = tiledlayout(4,1,'TileSpacing','compact','Padding','compact');
         
             % Build legend text
-            legend_entries = cell(1, 2*obj.n_drones);
-            for i = 1:obj.n_drones
+            legend_entries = cell(1, 2*self.n_drones);
+            for i = 1:self.n_drones
                 legend_entries{2*i-1} = sprintf('Drone %d - Optimal', i);
                 legend_entries{2*i}   = sprintf('Drone %d - LQR', i);
             end
@@ -528,46 +535,48 @@ classdef helper
                 hold(ax,'on');
                 grid(ax,'on');
         
-                for i = 1:obj.n_drones
-                    time_u   = (0:size(u_log{i},2)-1)   * obj.Ts;
-                    time_lqr = (0:size(u_lqr_log{i},2)-1) * obj.Ts;
+                for i = 1:self.n_drones
+                    time_u   = (0:size(u_log{i},2)-1)   * self.Ts;
+                    time_lqr = (0:size(u_lqr_log{i},2)-1) * self.Ts;
         
                     plot(ax, time_u,   u_log{i}(u_row,:),     'LineWidth',1,   'Color',colors(i,:));
                     plot(ax, time_lqr, u_lqr_log{i}(u_row,:), '--', 'LineWidth', 1.2, 'Color',colors(i,:));
                 end
         
-                ylabel(ax, u_labels{u_row} + " [" + u_units{u_row} + "]", 'Interpreter','latex');
+                ylabel(ax, u_labels{u_row} + " [" + u_units{u_row} + "]", 'Interpreter','latex','FontSize',14);
                 if u_row == m
-                    xlabel(ax, 'Time, $t$ [s]', 'Interpreter','latex');
+                    xlabel(ax, 'Time, $t$ [s]', 'Interpreter','latex','FontSize',14);
                 end
             end
         
             % Add legend
             legend(legend_entries, 'Interpreter','latex', ...
-                'Location','southoutside', 'Orientation','horizontal');
+                'Location','southoutside', 'Orientation','horizontal', 'FontSize', 14);
         
             % Export figure
             exportgraphics(fig, "figures/control_inputs_" + opt + ".pdf");
-        
         end
         
         %% ===========================================================
         % State vs state-derivative (per drone)
-        function plotStateTransitions(obj, x_log, opt)
+        function plotStateTransitions(self, x_log, opt)
             % State labels for positions and velocities
             state_labels = {'$x$','$y$','$z$','$\phi$','$\theta$','$\psi$', ...
                             '$\dot{x}$','$\dot{y}$','$\dot{z}$', ...
                             '$\dot{\phi}$','$\dot{\theta}$','$\dot{\psi}$'};
-        
-            for i = 1:obj.n_drones
+            state_units = {'[m]','[m]','[m]','[rad]','[rad]','[rad]', ...
+                            '[m/s]','[m/s]','[m/s]', ...
+                            '[rad/s]','[rad/s]','[rad/s]'};
+
+            for i = 1:self.n_drones
                 % Extract data
                 xdata = x_log{i};
                 T = size(xdata,2);
-                time = (0:T-1) * obj.Ts;
+                time = (0:T-1) * self.Ts;
         
                 % Create figure
                 fig = figure('Visible','off','Position',[100 100 1200 900]);
-        
+
                 % Plot 6 position and angle states with their derivatives
                 for k = 1:6
                     subplot(3,2,k);
@@ -577,10 +586,11 @@ classdef helper
                     plot(time, xdata(k,:),   'LineWidth',1);
                     plot(time, xdata(k+6,:), 'LineWidth',1);
         
-                    xlabel('Time, $t$ [s]', 'Interpreter','latex');
-                    ylabel(state_labels{k},  'Interpreter','latex');
-        
-                    legend({state_labels{k}, state_labels{k+6}}, 'Interpreter','latex');
+                    xlabel('Time, $t$ [s]', 'Interpreter','latex','FontSize',14);
+                    label = state_labels(k) + " " + state_units(k) + " and " + state_labels(k+6) + " " + state_units(k+6);
+                    ylabel(label,  'Interpreter','latex','FontSize',14);
+
+                    legend({state_labels{k}, state_labels{k+6}}, 'Interpreter','latex', 'FontSize', 14);
                 end
         
                 % Export figure
@@ -591,23 +601,23 @@ classdef helper
 
         %% ===========================================================
         % Grouped states overview (2x2 per drone)
-        function plotGroupedStates(obj, x_log, opt)
+        function plotGroupedStates(self, x_log, opt)
             % State groups: indices, labels, titles
             triples = {
-                [1 2 3],      {'$x$','$y$','$z$'},                                'Positions';
-                [7 8 9],      {'$\dot{x}$','$\dot{y}$','$\dot{z}$'},              'Linear velocities';
-                [4 5 6],      {'$\phi$','$\theta$','$\psi$'},                     'Euler angles';
-                [10 11 12],   {'$\dot{\phi}$','$\dot{\theta}$','$\dot{\psi}$'},   'Angular velocities'
+                [1 2 3],      {'$x$','$y$','$z$'},                                'Positions [m]';
+                [7 8 9],      {'$\dot{x}$','$\dot{y}$','$\dot{z}$'},              'Linear velocities [m/s]';
+                [4 5 6],      {'$\phi$','$\theta$','$\psi$'},                     'Euler angles [rad]';
+                [10 11 12],   {'$\dot{\phi}$','$\dot{\theta}$','$\dot{\psi}$'},   'Angular velocities [rad/s]'
             };
         
-            for i = 1:obj.n_drones
+            for i = 1:self.n_drones
                 % Extract data and time vector
                 xdata = x_log{i};
-                time = (0:size(xdata,2)-1) * obj.Ts;
+                time = (0:size(xdata,2)-1) * self.Ts;
         
                 % Create figure
                 fig = figure('Visible','off','Position',[100 100 1200 600]);
-        
+
                 % Plot four groups of states
                 for sp = 1:4
                     idxs   = triples{sp,1};
@@ -621,10 +631,10 @@ classdef helper
                     for k = 1:3
                         plot(time, xdata(idxs(k),:), 'LineWidth',1);
                     end
-        
-                    ylabel(title_label, 'Interpreter','latex');
-                    xlabel('Time, $t$ [s]', 'Interpreter','latex');
-                    legend(labels, 'Interpreter','latex');
+
+                    ylabel(title_label, 'Interpreter','latex','FontSize',14);
+                    xlabel('Time, $t$ [s]', 'Interpreter','latex','FontSize',14);
+                    legend(labels, 'Interpreter','latex', 'FontSize', 14);
                 end
         
                 % Export figure
@@ -634,69 +644,75 @@ classdef helper
         end
 
         %% ===========================================================
-        % Drone–object distances
-        function plotDroneObjectDistances(obj, d_obj_log, opt)
+        % Drone-object distances
+        function plotDroneObjectDistances(self, d_obj_log, opt)
             % Colors for each drone
-            colors = lines(obj.n_drones);
+            colors = lines(self.n_drones);
         
             % Create figure sized by number of objects
-            fig = figure('Visible','off', 'Position',[100 100 1200 300*obj.n_objects]);
-        
-            for j = 1:obj.n_objects
-                subplot(obj.n_objects,1,j);
+            fig = figure('Visible','off', 'Position',[100 100 1200 300*self.n_objects]);
+
+            for j = 1:self.n_objects
+                subplot(self.n_objects,1,j);
                 hold on;
                 grid on;
         
                 leg = {};
         
                 % Plot distance from each drone to object j
-                for i = 1:obj.n_drones
+                for i = 1:self.n_drones
                     dvec = d_obj_log{i,j};
-                    time = (0:length(dvec)-1) * obj.Ts;
+                    time = (0:length(dvec)-1) * self.Ts;
         
                     % Plot every second point to reduce size
                     plot(time(1:2:end), dvec(1:2:end), 'LineWidth',1, 'Color', colors(i,:));
                     leg{end+1} = sprintf('Drone %d', i);
                 end
-        
+                
                 % Minimum safe distance line
-                yline(obj.r_safe + obj.R_objects(j), 'r--', 'LineWidth',1);
+                yline(self.r_safe + self.R_objects(j), 'r--', 'LineWidth',1);
                 leg{end+1} = 'Minimum safe distance';
-        
-                if j == obj.n_objects
-                    xlabel('Time, $t$ [s]', 'Interpreter','latex');
+                
+                % Label sizes
+                ax.FontSize = 10;
+                ax.XLabel.FontSize = 12;
+                ax.YLabel.FontSize = 12;
+
+                if j == self.n_objects
+                    xlabel('Time, $t$ [s]', 'Interpreter','latex','FontSize',14);
                 end
         
-                ylabel('$d_{ij}$ [m]', 'Interpreter','latex');
-                title(sprintf('Distance to object %d', j), 'Interpreter','latex');
+                ylabel('$d_{ij}$ [m]', 'Interpreter','latex','FontSize',14);
+                title(sprintf('Distance to object %d', j), 'Interpreter','latex','FontSize',14);
             end
         
             % Combined legend at bottom
             legend(leg, 'Interpreter','latex', ...
-                'Location','southoutside', 'Orientation','horizontal');
+                'Location','southoutside', 'Orientation','horizontal', 'FontSize',14);
         
             % Export figure
             exportgraphics(fig, "figures/drone_obj_dist_" + opt + ".pdf");
         end
 
         %% ===========================================================
-        % Drone–drone distances
-        function plotDroneDroneDistances(obj, d_drone_log, opt)
+        % Drone-drone distances
+        function plotDroneDroneDistances(self, d_drone_log, opt)
             % Colors for each drone
-            colors = lines(obj.n_drones);
+            colors = lines(self.n_drones);
         
             % Create figure
             fig = figure('Visible','off','Position',[100 100 1200 500]);
+           
             hold on;
             grid on;
         
             leg = {};
         
             % Plot pairwise drone distances
-            for i = 1:obj.n_drones
-                for j = i+1:obj.n_drones
+            for i = 1:self.n_drones
+                for j = i+1:self.n_drones
                     dvec = d_drone_log{i,j};
-                    time = (0:length(dvec)-1) * obj.Ts;
+                    time = (0:length(dvec)-1) * self.Ts;
         
                     % Downsample to reduce plot size
                     plot(time(1:2:end), dvec(1:2:end), ...
@@ -707,28 +723,28 @@ classdef helper
             end
         
             % Minimum allowed distance line
-            yline(obj.r_drone, 'r--', 'LineWidth',1);
+            yline(self.r_drone, 'r--', 'LineWidth',1);
             leg{end+1} = 'Minimum separation';
-        
-            xlabel('Time, $t$ [s]', 'Interpreter','latex');
-            ylabel('$d_{ij}$ [m]', 'Interpreter','latex');
+
+            xlabel('Time, $t$ [s]', 'Interpreter','latex','FontSize',14);
+            ylabel('$d_{ij}$ [m]', 'Interpreter','latex','FontSize',14);
         
             legend(leg, 'Interpreter','latex', ...
-                'Location','southoutside', 'Orientation','horizontal');
+                'Location','southoutside', 'Orientation','horizontal','FontSize',14);
         
             exportgraphics(fig, "figures/drone_drone_dist_" + opt + ".pdf");
         end
     
         %% ===========================================================
         % Multi-drone animation
-        function animateDrones(obj, x_log, opt, view_ang)
+        function animateDrones(self, x_log, opt)
             gif_name = "3D_trajectory_" + opt + ".gif";
             fps = 20;
             delay = 1/fps;
             
             % Compute fixed axis limits
             all_x = []; all_y = []; all_z = [];
-            for i = 1:obj.n_drones
+            for i = 1:self.n_drones
                 traj = x_log{i};
                 all_x = [all_x traj(1,:)];
                 all_y = [all_y traj(2,:)];
@@ -744,7 +760,8 @@ classdef helper
             zmax = max(all_z) + margin;
         
             % Setup figure
-            fig_anim = figure('Visible','off'); 
+            fig_anim = figure('Visible','off', 'Position',[100 100 1600 1200], 'Renderer', 'opengl');
+
             hold on; grid on;
             view(20,35);
         
@@ -759,48 +776,187 @@ classdef helper
         
             ax = gca;
             ax.SortMethod = 'childorder';
+            
+            % Label sizes
+            ax.FontSize = 10;
+            ax.XLabel.FontSize = 12;
+            ax.YLabel.FontSize = 12;
+            ax.ZLabel.FontSize = 12;
+    
+            colors = lines(self.n_drones);
+
+            % Drone geometry model (simplified quadrotor, ~0.18 x 0.18 x 0.10 m)
+
+            % Body box dimensions
+            bx = 0.10;   % length (x)
+            by = 0.03;   % width  (y)
+            bz = 0.03;   % height (z)
+            dx = bx/2; dy = by/2; dz = bz/2;
         
-            colors = lines(obj.n_drones);
+            % Body vertices (centered at origin)
+            bodyVerts = [ ...
+                -dx -dy -dz;
+                 dx -dy -dz;
+                 dx  dy -dz;
+                -dx  dy -dz;
+                -dx -dy  dz;
+                 dx -dy  dz;
+                 dx  dy  dz;
+                -dx  dy  dz];
+        
+            bodyFaces = [ ...
+                1 2 3 4;
+                5 6 7 8;
+                1 2 6 5;
+                2 3 7 6;
+                3 4 8 7;
+                4 1 5 8];
+        
+            % Arms (4 arms at +/- 45 degrees, square cross-section)
+            arm_half = 0.09;      % arm length from center to near rotor
+            arm_w    = 0.01;      % arm thickness
+            a        = arm_w/2;
+        
+            % Base arm along +x
+            baseArm = [ ...
+                0        -a  -a;
+                arm_half -a  -a;
+                arm_half  a  -a;
+                0         a  -a;
+                0        -a   a;
+                arm_half -a   a;
+                arm_half  a   a;
+                0         a   a];
+        
+            Rz_deg = @(ang) [cosd(ang) -sind(ang) 0; ...
+                             sind(ang)  cosd(ang) 0; ...
+                             0          0         1];
+        
+            armVerts = cell(1,4);
+            armFaces = repmat({[1 2 3 4; 5 6 7 8; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8]}, 1, 4);
+            armAngles = [45, 135, -135, -45];   % front-right, front-left, rear-left, rear-right
+        
+            for a_i = 1:4
+                armVerts{a_i} = (Rz_deg(armAngles(a_i)) * baseArm')';
+            end
+        
+            % Motors (small cylinders) and their offsets from origin
+            N_cyl = 20;
+            r_motor = 0.012;
+            h_motor = 0.02;
+        
+            [Xc, Yc, Zc] = cylinder(r_motor, N_cyl);
+            Zc = Zc * h_motor;
+        
+            motorX = Xc;
+            motorY = Yc;
+            motorZ = Zc;
+        
+            motorOffsets = zeros(4,3);
+            motorOffsets(1,:) = (Rz_deg(45)   * [arm_half 0 0]')';   % front-right
+            motorOffsets(2,:) = (Rz_deg(135)  * [arm_half 0 0]')';   % front-left
+            motorOffsets(3,:) = (Rz_deg(-135) * [arm_half 0 0]')';   % rear-left
+            motorOffsets(4,:) = (Rz_deg(-45)  * [arm_half 0 0]')';   % rear-right
+        
+            % Propellers (flat ellipses)
+            Rprop = 0.035;
+            t_prop = linspace(0, 2*pi, 40);
+            propX = Rprop * cos(t_prop);
+            propY = 0.6 * Rprop * sin(t_prop);
+            prop_z_offset = h_motor + 0.008;
+            propZ = zeros(size(t_prop)) + prop_z_offset;
         
             % Plot obstacles
-            for j = 1:obj.n_objects
+            for j = 1:self.n_objects
                 [Xs, Ys, Zs] = sphere(20);
-                Xs = obj.R_objects(j)*Xs + obj.P_objects(1, j);
-                Ys = obj.R_objects(j)*Ys + obj.P_objects(2, j);
-                Zs = obj.R_objects(j)*Zs + obj.P_objects(3, j);
+                Xs = self.R_objects(j)*Xs + self.P_objects(1, j);
+                Ys = self.R_objects(j)*Ys + self.P_objects(2, j);
+                Zs = self.R_objects(j)*Zs + self.P_objects(3, j);
         
                 C = Zs;
-                s = surf(Xs, Ys, Zs, C);
-                s.EdgeColor = 'k';
+                s = surf(Xs, Ys, Zs, C, ...
+                         'HandleVisibility','off');
+                s.EdgeColor = 'none';
                 s.FaceColor = 'interp';
                 s.FaceAlpha = 0.4;
-        
-                text(obj.P_objects(1, j), obj.P_objects(2, j), obj.P_objects(3, j) + obj.R_objects(j)*0.75, ...
+                s.LineStyle = 'none';
+                
+                text(self.P_objects(1, j), self.P_objects(2, j), ...
+                     self.P_objects(3, j) + self.R_objects(j)*0.75, ...
                      sprintf('Obj. %d', j), ...
                      'HorizontalAlignment','center', ...
-                     'Interpreter','latex', 'FontSize',8, 'FontWeight','bold');
+                     'Interpreter','latex', ...
+                     'FontSize',10, 'FontWeight','bold', ...
+                     'HandleVisibility','off');
             end
         
             colormap(parula);
             shading interp;
-        
+      
             % Drone markers & dashed paths
-            h_marker = gobjects(obj.n_drones,1);
-            h_path   = gobjects(obj.n_drones,1);
+            h_marker = gobjects(self.n_drones,1);
+            h_path   = gobjects(self.n_drones,1);
         
-            for i = 1:obj.n_drones
-                h_marker(i) = scatter3(NaN,NaN,NaN, 25, colors(i,:), 'filled');
+            % Drone body / arms / motors / props
+            h_body   = gobjects(self.n_drones,1);
+            h_arms   = cell(self.n_drones,4);
+            h_motors = cell(self.n_drones,4);
+            h_props  = cell(self.n_drones,4);
+        
+            for i = 1:self.n_drones
+                % Point marker
+                h_marker(i) = scatter3(NaN,NaN,NaN, 25, colors(i,:), 'filled', ...
+                                       'HandleVisibility','off');
+        
+                % Dashed path
                 h_path(i)   = plot3(NaN,NaN,NaN, '--', ...
                                     'Color', colors(i,:), ...
-                                    'LineWidth', 1.0);
+                                    'LineWidth', 1.0, ...
+                                    'HandleVisibility','off');
+        
+                % Body patch
+                h_body(i) = patch('Vertices', bodyVerts, ...
+                                  'Faces', bodyFaces, ...
+                                  'FaceColor', colors(i,:), ...
+                                  'FaceAlpha', 0.30, ...
+                                  'EdgeColor', 'none', ...
+                                  'HandleVisibility','off');
+        
+                % Arm patches
+                for a_i = 1:4
+                    h_arms{i,a_i} = patch('Vertices', armVerts{a_i}, ...
+                                          'Faces', armFaces{a_i}, ...
+                                          'FaceColor', colors(i,:), ...
+                                          'FaceAlpha', 0.20, ...
+                                          'EdgeColor', 'none', ...
+                                          'HandleVisibility','off');
+                end
+        
+                % Motors
+                for m_i = 1:4
+                    h_motors{i,m_i} = surf(motorX, motorY, motorZ, ...
+                                           'FaceColor', colors(i,:), ...
+                                           'EdgeColor','none', ...
+                                           'FaceAlpha', 0.9, ...
+                                           'HandleVisibility','off');
+                end
+        
+                % Propellers
+                for p_i = 1:4
+                    h_props{i,p_i} = fill3(propX, propY, propZ, ...
+                                           colors(i,:), ...
+                                           'FaceAlpha',0.4, ...
+                                           'EdgeColor','none', ...
+                                           'HandleVisibility','off');
+                end
             end
         
             % Legend handles
             legend_handles = [];
-            legend_names = {};
+            legend_names   = {};
             
-            % Drone markers
-            for i = 1:obj.n_drones
+            % Drone markers (for legend only)
+            for i = 1:self.n_drones
                 h_leg_marker = scatter3(NaN,NaN,NaN,25,colors(i,:),'filled');
                 legend_handles = [legend_handles; h_leg_marker];
                 legend_names{end+1} = sprintf('Drone %d', i);
@@ -810,31 +966,109 @@ classdef helper
             lgd = legend(legend_handles, legend_names, ...
                          'Interpreter','latex', ...
                          'Orientation','horizontal', ...
-                         'FontSize', 9, ...
-                         'NumColumns', obj.n_drones, ...
+                         'NumColumns', self.n_drones, ...
                          'Location','southoutside');
+            lgd.FontSize = 10;
         
             % Timestamp text
-            t_handle = text(xmax, ymin, zmin, 't = 0.0 s', ...
-                            'Interpreter','latex', ...
-                            'FontSize', 10, ...
-                            'HorizontalAlignment','right', ...
-                            'VerticalAlignment','bottom');
+            t_handle = annotation(fig_anim, 'textbox', ...
+            [0.80 0.92 0.18 0.05], ...   % [x y w h] normalized to figure
+            'String','t = 0.00 s', ...
+            'Interpreter','latex', ...
+            'FontSize',14, ...
+            'HorizontalAlignment','right', ...
+            'VerticalAlignment','top', ...
+            'EdgeColor','none', ...
+            'BackgroundColor','none');
         
             % Start GIF creation
-            T = length(x_log{1});   % number of samples
+            T = size(x_log{1}, 2);   % number of samples (columns)
         
             for k = 1:T
         
-                % Update drone trajectory + markers
-                for i = 1:obj.n_drones
+                % Update drone trajectory + markers + body model
+                for i = 1:self.n_drones
                     xi = x_log{i};
         
-                    set(h_marker(i), ...
-                         'XData', xi(1,k), ...
-                         'YData', xi(2,k), ...
-                         'ZData', xi(3,k));
+                    % Position
+                    px = xi(1,k);
+                    py = xi(2,k);
+                    pz = xi(3,k);
+                    pos = [px py pz];
         
+                    % Orientation (phi, theta, psi)
+                    phi   = xi(4,k);   % roll about x
+                    theta = xi(5,k);   % pitch about y
+                    psi   = xi(6,k);   % yaw about z
+        
+                    % Rotation matrices
+                    Rx = [1 0 0; ...
+                          0 cos(phi) -sin(phi); ...
+                          0 sin(phi)  cos(phi)];
+        
+                    Ry = [ cos(theta) 0 sin(theta); ...
+                           0          1        0; ...
+                          -sin(theta) 0 cos(theta)];
+        
+                    Rz = [cos(psi) -sin(psi) 0; ...
+                          sin(psi)  cos(psi) 0; ...
+                          0         0        1];
+        
+                    % Total rotation
+                    R = Rz * Ry * Rx;
+        
+                    % Update body
+                    bodyWorld = (R * bodyVerts')' + pos;
+                    set(h_body(i), 'Vertices', bodyWorld);
+        
+                    % Update arms
+                    for a_i = 1:4
+                        armWorld = (R * armVerts{a_i}')' + pos;
+                        set(h_arms{i,a_i}, 'Vertices', armWorld);
+                    end
+        
+                    % Update motors
+                    for m_i = 1:4
+                        offset = motorOffsets(m_i,:);
+        
+                        Xm = motorX + offset(1);
+                        Ym = motorY + offset(2);
+                        Zm = motorZ + offset(3);
+        
+                        pts_local = [Xm(:)'; Ym(:)'; Zm(:)'];
+                        pts_world = R * pts_local;
+        
+                        Xm_w = reshape(pts_world(1,:), size(Xm)) + pos(1);
+                        Ym_w = reshape(pts_world(2,:), size(Ym)) + pos(2);
+                        Zm_w = reshape(pts_world(3,:), size(Zm)) + pos(3);
+        
+                        set(h_motors{i,m_i}, ...
+                            'XData', Xm_w, ...
+                            'YData', Ym_w, ...
+                            'ZData', Zm_w);
+                    end
+        
+                    % Update propellers
+                    for p_i = 1:4
+                        offset = motorOffsets(p_i,:);
+        
+                        prop_local = [propX; propY; propZ];
+                        prop_shift = prop_local + offset';
+                        prop_world = R * prop_shift + pos';
+        
+                        set(h_props{i,p_i}, ...
+                            'XData', prop_world(1,:), ...
+                            'YData', prop_world(2,:), ...
+                            'ZData', prop_world(3,:));
+                    end
+        
+                    % Point marker
+                    set(h_marker(i), ...
+                         'XData', px, ...
+                         'YData', py, ...
+                         'ZData', pz);
+        
+                    % Dashed path
                     set(h_path(i), ...
                          'XData', xi(1,1:k), ...
                          'YData', xi(2,1:k), ...
@@ -842,16 +1076,18 @@ classdef helper
                 end
         
                 % Update time text
-                t_handle.String = sprintf('t = %.2f s', (k-1)*obj.Ts);
+                t_handle.String = sprintf('t = %.2f s', (k-1)*self.Ts);
         
                 % Capture frame
                 frame = getframe(fig_anim);
                 [imind, cm] = rgb2ind(frame2im(frame), 256);
         
                 if k == 1
-                    imwrite(imind, cm, gif_name, "gif", "Loopcount", inf, "DelayTime", delay);
+                    imwrite(imind, cm, gif_name, "gif", ...
+                            "Loopcount", inf, "DelayTime", delay);
                 else
-                    imwrite(imind, cm, gif_name, "gif", "WriteMode", "append", "DelayTime", delay);
+                    imwrite(imind, cm, gif_name, "gif", ...
+                            "WriteMode", "append", "DelayTime", delay);
                 end
             end
         

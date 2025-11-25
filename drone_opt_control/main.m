@@ -2,7 +2,10 @@ clear; close all; clc;
 
 %% Optimization approach
 opts = ["cvx_single", "cvx_mpc", "casdi", "lqr"];
-opt  = "lqr";
+opt  = "cvx_mpc";
+
+%% Add noise
+noise = false;
 
 %% Sampling rate
 Ts = 0.02;
@@ -19,11 +22,11 @@ f = str2func("helper.f");
 %% LQR Design
 
 % Cost matrices
-R = diag([1/15; 1000; 1000; 100]);
-Q = diag([0.1; 0.1; 10; 0.01; 0.01; 0.01; 0.01; 0.01; 1; 0.1; 0.1; 0.1]);
+R_e = diag([1/15; 1000; 1000; 100]);
+Q_e = diag([0.1; 0.1; 10; 0.01; 0.01; 0.01; 0.01; 0.01; 1; 0.1; 0.1; 0.1]);
 
 % LQR gains
-[K, ~, ~] = lqrd(A, B, Q, R, Ts);
+[K, ~, ~] = lqrd(A, B, Q_e, R_e, Ts);
 
 %% Scenario Setup
 
@@ -90,6 +93,21 @@ for i = 1:n_drones
     u_lqr_log{i} = U(:, i, 1);
 end
 
+% Noise
+Q = 1e-4*eye(n);
+Lw = chol(Q, 'lower');
+
+R = 1e-4*eye(n);
+Lv = chol(R, 'lower');
+
+% Estimated states
+Xp = X;
+
+% Covariance of estimation error
+P = zeros(n, n*2, n_drones);
+Pp = zeros(n, n, n_drones);
+Kk = zeros(n, n, n_drones);
+
 % Helper class
 util = helper(r_drone, r_safe, P_objects, R_objects, n_drones, n_objects, Ts, opt);
 
@@ -100,10 +118,15 @@ terminated = false(n_drones,1); % Target position achieved flag
 
 %% Main loop
 while any(~terminated)
+    % Stop condition
+    if iter > 500
+        break;
+    end
+
     % Check per-drone termination
     for i = 1:n_drones
         if ~terminated(i)
-            if vecnorm(X(:,i,1) - X_target(:,i), 2, 1) < 0.01
+            if vecnorm(X(:, i, 1) - X_target(:, i), 2, 1) < 0.1
                 terminated(i) = true;
                 disp(['Iteration ', num2str(iter), ': Drone ', num2str(i), ' has terminated.']);
             end
@@ -132,11 +155,31 @@ while any(~terminated)
         if terminated(i), continue; end
         
         for j = 1:(H-1)
+            if noise
+                % Process noise
+                w = Lw*rand(n, 1);
+                v = Lv*rand(n, 1);
+            else
+                w = 0;
+                v = 0;
+            end
+            
             % Basline control input via LQR
             U(:, i, j) = -K*(X(:, i, j) - X_ref(:, i));
+            X(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j) + w;
+            y = X(:, i, j + 1) + v;
+            
+            % Dynamics with process noise
+            Xp(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j) + w;
+            
+            % Covariance of estimation error
+            Pp(:, :, i) = Ad*P(:, 1:n, i)*Ad' + Q;
+            Kk(:, :, i) = Pp(:, :, i)*((Pp(:, :, i) + R)\eye(n));
+            P(:, n+1:end, i) = (eye(n) - Kk(:, :, i))*Pp(:, :, i);
+            P(:, 1:n, i) = P(:, n+1:end, i);
 
-            % Linearized state dynamics
-            X(:, i, j + 1) = Ad*X(:, i, j) + Bd*U(:, i, j);
+            % Kalman filter
+            X(:, i, j + 1) = Xp(:, i, j + 1) + Kk(:, :, i)*(y - Xp(:, i, j + 1));
             U(1, i, j) = U(1, i, j) + m_drone*g; % For completeness
         end
         
@@ -194,25 +237,26 @@ while any(~terminated)
 
         for i = 1:n_drones
             if terminated(i), continue; end
-
+        
             % Apply finite differences and linearized dynamics to find U_coll (related to z)
             zdot = X(9, i, :);
             zddot = (dP_k1(3, i, 1) - zdot(1))/Ts;
-            U_coll = (zddot + g)*m_drone;
-            
+    
             % Apply finite differences and linearized dynamics to find U_phi (related to y)
             ydot = X(8, i, :);
             yddot = (-ydot(1) + 3*dP_k3(2, i, 1) - 3*dP_k3(2, i, 2) + dP_k3(2, i, 3))/Ts^3;
-            U_phi = yddot*(-I_x/g);
-            
+    
             % Apply finite differences and linearized dynamics to find U_theta (related to x)
             xdot = X(7, i, :);
             xddot = (-xdot(1) + 3*dP_k3(1, i, 1) - 3*dP_k3(1, i, 2) + dP_k3(1, i, 3))/Ts^3;
-            U_theta = xddot*(I_y/g);
-
+    
             % Apply finite differences and linearized dynamics to find U_psi (related to psi)
             psidot = X(12, i, :);
             psiddot = (psidot(2) - psidot(1))/Ts;
+
+            U_coll = (zddot + g)*m_drone;
+            U_phi = yddot*(-I_x/g);
+            U_theta = xddot*(I_y/g);
             U_psi = psiddot*(I_z);
 
             %% Compute non-linear dynamics for optimal control
@@ -237,6 +281,7 @@ while any(~terminated)
 
             %% Update variables and log trajectory
             X(:, i, 1) = x0;
+            Xp(:, i, 1) = x0;
             x_log{i} = [x_log{i}, x0];
             u_log{i} = [u_log{i}, u0];
         end
@@ -279,11 +324,17 @@ end
 
 %% Plot results
 util.plotTrajectories(x_log, opt);
-if opt ~= "lqr"
+
+do_plot = false;
+if do_plot && opt ~= "lqr"
     util.plotControlInputs(u_log, u_lqr_log, opt);
     util.plotStateTransitions(x_log, opt);
     util.plotGroupedStates(x_log, opt);
     util.plotDroneObjectDistances(d_obj_log, opt);
     util.plotDroneDroneDistances(d_drone_log, opt);
 end
-% util.animateDrones(x_log, opt);
+
+do_animate = false;
+if do_animate
+    util.animateDrones(x_log, opt);
+end
