@@ -232,28 +232,28 @@ while any(~terminated)
         
         % Optimization
         k = 1;
-        dP_k1 = util.drone_opt(X, k + 1); % 1-step ahead for z velocity i.e. 2-step ahead for z
-        dP_k3 = util.drone_opt(X, k + 3); % 3-step ahead for x, y velocity i.e. 4-step ahead for x, y
+        dP_sol = util.drone_opt(X, k + 3); % 3-step ahead optimization
 
         for i = 1:n_drones
             if terminated(i), continue; end
         
             % Apply finite differences and linearized dynamics to find U_coll (related to z)
             zdot = X(9, i, :);
-            zddot = (dP_k1(3, i, 1) - zdot(1))/Ts;
+            zddot = (dP_sol(3, i, 1) - zdot(1))/Ts;
     
             % Apply finite differences and linearized dynamics to find U_phi (related to y)
             ydot = X(8, i, :);
-            yddot = (-ydot(1) + 3*dP_k3(2, i, 1) - 3*dP_k3(2, i, 2) + dP_k3(2, i, 3))/Ts^3;
+            yddot = (-ydot(1) + 3*dP_sol(2, i, 1) - 3*dP_sol(2, i, 2) + dP_sol(2, i, 3))/Ts^3;
     
             % Apply finite differences and linearized dynamics to find U_theta (related to x)
             xdot = X(7, i, :);
-            xddot = (-xdot(1) + 3*dP_k3(1, i, 1) - 3*dP_k3(1, i, 2) + dP_k3(1, i, 3))/Ts^3;
+            xddot = (-xdot(1) + 3*dP_sol(1, i, 1) - 3*dP_sol(1, i, 2) + dP_sol(1, i, 3))/Ts^3;
     
             % Apply finite differences and linearized dynamics to find U_psi (related to psi)
             psidot = X(12, i, :);
             psiddot = (psidot(2) - psidot(1))/Ts;
 
+            % Optimal control inputs
             U_coll = (zddot + g)*m_drone;
             U_phi = yddot*(-I_x/g);
             U_theta = xddot*(I_y/g);
