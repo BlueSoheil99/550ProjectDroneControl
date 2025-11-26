@@ -1,0 +1,191 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{SUTO20235475}{article}{}
+      \name{author}{3}{}{%
+        {{hash=7d6024fbafc1ff974ab1d4e4a903bd0e}{%
+           family={Sütő},
+           familyi={S\bibinitperiod},
+           given={Boglárka},
+           giveni={B\bibinitperiod}}}%
+        {{hash=e8e2eb3675231644da5218898435f501}{%
+           family={Codrean},
+           familyi={C\bibinitperiod},
+           given={Alexandru},
+           giveni={A\bibinitperiod}}}%
+        {{hash=08c6178af39f097bf6c4e2bf230d9f4d}{%
+           family={Lendek},
+           familyi={L\bibinitperiod},
+           given={Zsófia},
+           giveni={Z\bibinitperiod}}}%
+      }
+      \strng{namehash}{716bbe675eda97a6157243353cabca0b}
+      \strng{fullhash}{7a4531e6ae61f1fcb89b7eb020b684ad}
+      \strng{bibnamehash}{7a4531e6ae61f1fcb89b7eb020b684ad}
+      \strng{authorbibnamehash}{7a4531e6ae61f1fcb89b7eb020b684ad}
+      \strng{authornamehash}{716bbe675eda97a6157243353cabca0b}
+      \strng{authorfullhash}{7a4531e6ae61f1fcb89b7eb020b684ad}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{The control and path planning of multiple drones in a 3D space with obstacle avoidance is a complex challenge, subject to ongoing research. In this paper we propose an optimal control approach, with a baseline controller and filter running on the drones, and a prediction based optimization algorithm running remotely, as a supervisory controller. The supervisor is responsible for calculating the minimal deviation from the trajectory given by the baseline controllers, such that the obstacle is avoided. The approach is tested in simulations with nonlinear drone models in a realistic setting with noise and transmission delays.}
+      \field{issn}{2405-8963}
+      \field{journaltitle}{IFAC-PapersOnLine}
+      \field{note}{22nd IFAC World Congress}
+      \field{number}{2}
+      \field{title}{Optimal control of multiple drones for obstacle avoidance}
+      \field{volume}{56}
+      \field{year}{2023}
+      \field{pages}{5475\bibrangedash 5481}
+      \range{pages}{7}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.ifacol.2023.10.200
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S2405896323005517
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S2405896323005517
+      \endverb
+      \keyw{Optimal control,networked control,drones,obstacle avoidance}
+    \endentry
+    \entry{7937882}{article}{}
+      \name{author}{3}{}{%
+        {{hash=c483f994a83412e445434defc3bd2d44}{%
+           family={Glotfelter},
+           familyi={G\bibinitperiod},
+           given={Paul},
+           giveni={P\bibinitperiod}}}%
+        {{hash=62610e97a5d70a6c883ddccad75d414b}{%
+           family={Cortés},
+           familyi={C\bibinitperiod},
+           given={Jorge},
+           giveni={J\bibinitperiod}}}%
+        {{hash=2b5ca0ee4d617ad97cc150c468ef1d26}{%
+           family={Egerstedt},
+           familyi={E\bibinitperiod},
+           given={Magnus},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{1cff3377c609b958d96b5e5165136e69}
+      \strng{fullhash}{b922be94b5bc6cbe34c58607b597fdf1}
+      \strng{bibnamehash}{b922be94b5bc6cbe34c58607b597fdf1}
+      \strng{authorbibnamehash}{b922be94b5bc6cbe34c58607b597fdf1}
+      \strng{authornamehash}{1cff3377c609b958d96b5e5165136e69}
+      \strng{authorfullhash}{b922be94b5bc6cbe34c58607b597fdf1}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Control Systems Letters}
+      \field{number}{2}
+      \field{title}{Nonsmooth Barrier Functions With Applications to Multi-Robot Systems}
+      \field{volume}{1}
+      \field{year}{2017}
+      \field{pages}{310\bibrangedash 315}
+      \range{pages}{6}
+      \verb{doi}
+      \verb 10.1109/LCSYS.2017.2710943
+      \endverb
+      \keyw{Tools;Lyapunov methods;Collision avoidance;Multi-agent systems;Robots;Robustness;Differential equations;Robotics;Lyapunov methods;autonomous systems}
+    \endentry
+    \entry{cvx}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=13a7aeb7d9f93619b79a68d92f0547ac}{%
+           family={CVX\bibnamedelima Research},
+           familyi={C\bibinitperiod\bibinitdelim R\bibinitperiod},
+           given={Inc.},
+           giveni={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \strng{fullhash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \strng{bibnamehash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \strng{authorbibnamehash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \strng{authornamehash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \strng{authorfullhash}{13a7aeb7d9f93619b79a68d92f0547ac}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://cvxr.com/cvx}}
+      \field{month}{8}
+      \field{title}{{CVX}: Matlab Software for Disciplined Convex Programming, version 2.0}
+      \field{year}{2012}
+    \endentry
+    \entry{gb08}{incollection}{}
+      \name{author}{2}{}{%
+        {{hash=dca52bf5de3970b2461fa92574af7eac}{%
+           family={Grant},
+           familyi={G\bibinitperiod},
+           given={M.},
+           giveni={M\bibinitperiod}}}%
+        {{hash=fdb760b740da8a080df12615e128118d}{%
+           family={Boyd},
+           familyi={B\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=0e1cd17a2840eef09503469d94dac28f}{%
+           family={Blondel},
+           familyi={B\bibinitperiod},
+           given={V.},
+           giveni={V\bibinitperiod}}}%
+        {{hash=fdb760b740da8a080df12615e128118d}{%
+           family={Boyd},
+           familyi={B\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=39e64d3aaa115a9e2b17c9f393083fed}{%
+           family={Kimura},
+           familyi={K\bibinitperiod},
+           given={H.},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer-Verlag Limited}%
+      }
+      \strng{namehash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{fullhash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{bibnamehash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{authorbibnamehash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{authornamehash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{authorfullhash}{58ef4d0ad798ea65d9c1115681f7a689}
+      \strng{editorbibnamehash}{47a91d0a5b26517795f7bc08a8eeb474}
+      \strng{editornamehash}{ac1e7b88191154c3c7efa7201af27695}
+      \strng{editorfullhash}{47a91d0a5b26517795f7bc08a8eeb474}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Recent Advances in Learning and Control}
+      \field{note}{\url{http://stanford.edu/~boyd/graph_dcp.html}}
+      \field{series}{Lecture Notes in Control and Information Sciences}
+      \field{title}{Graph implementations for nonsmooth convex programs}
+      \field{year}{2008}
+      \field{pages}{95\bibrangedash 110}
+      \range{pages}{16}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

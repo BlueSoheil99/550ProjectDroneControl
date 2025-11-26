@@ -1,0 +1,150 @@
+%%%%%%%%%%%%%%% fancyhdr - header & footer customization %%%%%%%%%%%%%%%
+%\usepackage{fancyhdr}
+%\pagestyle{fancy} 						% set the page style as fancy
+%\fancyhf{} 								% clear the header and footer fields
+%\renewcommand{\headrulewidth}{0.75pt}	% define the thickness of a horizontal line under the header
+%\renewcommand{\footrulewidth}{0pt} 	% define the thickness of a horizontal line above the footer
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%% titlesec, titletoc - section customization %%%%%%%%%%%%%%%
+\usepackage{titlesec}
+\usepackage{titletoc}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%% setspace - control line spacing %%%%%%%%%%%%%%%
+\usepackage{setspace}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{abstract}
+
+\usepackage{parskip}
+
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage{enumitem}
+
+\usepackage{pdfpages}
+
+\usepackage{amsmath, amssymb, amsthm, amsfonts}
+\usepackage{derivative}
+\usepackage{cancel}
+\usepackage{siunitx}
+
+\usepackage{booktabs}
+\usepackage{tabularray}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{rotating}
+
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{subcaption}
+\usepackage{float}
+
+\usepackage{footnote}
+
+\usepackage{comment}
+
+\usepackage[rounding = 2]{numerica}
+\usepackage{numerica-tables}
+
+\usepackage[linktocpage]{hyperref}
+\usepackage{cleveref}
+\usepackage[nottoc, numbib]{tocbibind}
+
+\usepackage{ifthen}
+\usepackage{etoolbox}
+\usepackage{ragged2e}
+
+\renewcommand{\contentsname}{Table of Contents}		% rename TOC from Contents to Table of Contents
+\renewcommand{\abstractnamefont}{\scshape}			% rename abstract with \scshape font
+
+\let\originalleft\left
+\let\originalright\right
+\renewcommand{\left}{\mathopen{}\mathclose\bgroup\originalleft}
+\renewcommand{\right}{\aftergroup\egroup\originalright}
+
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ev}[4][b]{\ifthenelse{\equal{#1}{B}}{#2\Bigg\vert_{#3}^{#4}}{#2\Big\vert_{#3}^{#4}}}
+
+\newcommand{\grad}[1]{\nabla#1}
+\renewcommand{\div}[1]{\nabla\cdot#1}
+\newcommand{\curl}[1]{\nabla\times#1}
+\newcommand{\lap}[1][d]{\ifthenelse{\equal{#1}{u}}{\Delta}{\nabla^2}}
+\DeclareMathOperator{\Grad}{grad}
+\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\Curl}{curl}
+\newcommand{\Lap}[1]{\Div(\Grad#1)}
+
+\DeclareMathOperator{\erf}{erf}
+\DeclareMathOperator{\erfc}{erfc}
+
+\newcommand*\circled[1]{\tikz[baseline = (char.base)]{\node[shape = circle, draw, inner sep = 2pt] (char) {#1};}}
+
+\sisetup{per-mode = fraction, fraction-function = \mathfrac, inter-unit-product = \ensuremath{\cdot}, group-digits = false, list-final-separator = {,\ and\ }}
+% \sisetup{per-mode = fraction, fraction-function = \mathfrac, group-digits = false}
+\newcommand{\mathfrac}[2]{\ifmmode\frac{#1}{#2}\else\tfrac{#1}{#2}\fi}
+
+\DeclareSIUnit{\atm}{atm}
+\DeclareSIUnit{\psia}{psi}
+\DeclareSIUnit{\psig}{psi-g}
+
+\DeclareSIUnit{\inch}{in}
+\DeclareSIUnit{\ft}{ft}
+
+\DeclareSIUnit{\cfm}{cfm}
+\DeclareSIUnit{\fpm}{fpm}
+\DeclareSIUnit{\fps}{fps}
+\DeclareSIUnit{\gpm}{gpm}
+\DeclareSIUnit{\gal}{gal}
+\DeclareSIUnit{\hp}{hp}
+
+\DeclareSIUnit{\lbm}{lbm}
+\DeclareSIUnit{\pound}{lbm}
+\DeclareSIUnit{\slug}{slug}
+\DeclareSIUnit{\lbf}{lbf}
+
+\DeclareSIUnit{\degreeFahrenheit}{^\circ{F}}
+\DeclareSIUnit{\degreeRankine}{R}
+
+\DeclareSIUnit{\RPM}{rpm}
+
+\DeclareSIUnit{\Btu}{Btu}
+
+\DeclareSIUnit{\px}{px}
+
+\DeclareSIUnit{\inwg}{in. wg.}
+\DeclareSIUnit{\inwgp}{\frac{\si{\inwg}}{\SI{100}{\ft}}}
+
+\DeclareSIUnit{\ftwg}{ft. wg.}
+\DeclareSIUnit{\ftwgp}{\frac{\si{\ftwg}}{\SI{100}{\ft}}}
+
+\graphicspath{{./figures/}}
+\pgfplotsset{compat = 1.18, table/search path={./data/}}
+
+\hypersetup{colorlinks = true, linkcolor = blue, urlcolor = blue, citecolor = blue, pdfborder = {0 0 0}}
+\crefname{table}{Table}{Tables}
+\crefname{figure}{Fig.}{Figs.}
+\crefname{equation}{Eqn.}{Eqns.}
+\crefname{section}{Section}{Sections}
+\crefname{appendix}{Appendix}{Appendices}
+%\numberwithin{table}{section}
+%\numberwithin{figure}{section}
+%\numberwithin{equation}{section}
+
+\newcommand{\inputTeX}[1]{\clearpage\input{#1}}
+
+\definecolor{tcol_DEF}{HTML}{E40125}\definecolor{tcol_PRP}{HTML}{EB8407}\definecolor{tcol_LEM}{HTML}{05C4D9}\definecolor{tcol_THM}{HTML}{1346E4}\definecolor{tcol_COR}{HTML}{7904C2}\definecolor{tcol_REM}{HTML}{18B640}\definecolor{tcol_PRF}{HTML}{5A76B2}\definecolor{tcol_EXA}{HTML}{21340A}
+
+\newtheoremstyle{mystyle}{}{}{}{}{\sffamily\bfseries}{.}{ }{} \makeatletter\renewenvironment{proof}[1][\proofname]{\par\pushQED{\qed}{\normalfont\sffamily\bfseries\topsep6\p@\@plus6\p@\relax #1\@addpunct{.}}}{\popQED\endtrivlist\@endpefalse}\makeatother \theoremstyle{mystyle}{\newtheorem*{remark}{Remark}} \theoremstyle{mystyle}{\newtheorem*{remarks}{Remarks}} \theoremstyle{mystyle}{\newtheorem*{example}{Example}} \theoremstyle{mystyle}{\newtheorem*{examples}{Examples}} \theoremstyle{definition}{\newtheorem*{exercise}{Exercise}}
+
+\tcbset{ tbox_DEF_style/.style={enhanced jigsaw, colback=tcol_DEF!10,colframe=tcol_DEF!80!black,, fonttitle=\sffamily\bfseries, separator sign=.,label separator={}, sharp corners,top=2pt,bottom=2pt,left=2pt,right=2pt, before skip=10pt,after skip=10pt,breakable }, tbox_PRP_style/.style={enhanced jigsaw, colback=tcol_PRP!10,colframe=tcol_PRP!80!black, fonttitle=\sffamily\bfseries, attach boxed title to top left={yshift=-\tcboxedtitleheight}, boxed title style={ boxrule=0pt,boxsep=2.5pt, colback=tcol_PRP!80!black,colframe=tcol_PRP!80!black, sharp corners=uphill }, separator sign=.,label separator={}, top=\tcboxedtitleheight,bottom=2pt,left=2pt,right=2pt, before skip=10pt,after skip=10pt,drop fuzzy shadow,breakable }, tbox_THM_style/.style={enhanced jigsaw, colback=tcol_THM!10,colframe=tcol_THM!80!black, fonttitle=\sffamily\bfseries,coltitle=black, attach boxed title to top left={xshift=10pt,yshift=-\tcboxedtitleheight/2}, boxed title style={ colback=tcol_THM!10,colframe=tcol_THM!80!black,height=16pt,bean arc }, separator sign=.,label separator={}, sharp corners,top=6pt,bottom=2pt,left=2pt,right=2pt, before skip=10pt,after skip=10pt,breakable }, tbox_LEM_style/.style={enhanced jigsaw, colback=tcol_LEM!10,colframe=tcol_LEM!80!black, boxrule=0pt, fonttitle=\sffamily\bfseries, attach boxed title to top left={yshift=-\tcboxedtitleheight}, boxed title style={ boxrule=0pt,boxsep=2pt, colback=tcol_LEM!80!black,colframe=tcol_LEM!80!black, interior code={\fill[tcol_LEM!80!black] (interior.north west)--(interior.south west)--([xshift=-2mm]interior.south east)--([xshift=2mm]interior.north east)--cycle; }}, separator sign=.,label separator={}, frame hidden,borderline north={1pt}{0pt}{tcol_LEM!80!black}, before upper={\hspace{\tcboxedtitlewidth}}, sharp corners,top=2pt,bottom=2pt,left=5pt,right=5pt, before skip=10pt,after skip=10pt,breakable }, tbox_COR_style/.style={enhanced jigsaw, colback=tcol_COR!10,colframe=tcol_COR!80!black, boxrule=0pt, fonttitle=\sffamily\bfseries,coltitle=black, separator sign={},label separator={}, description font=\normalfont\sffamily, description delimiters={(}{)}, attach title to upper,after title={.\ }, frame hidden,borderline west={2pt}{0pt}{tcol_COR}, sharp corners,top=2pt,bottom=2pt,left=5pt,right=5pt, before skip=10pt,after skip=10pt,breakable }, }
+
+\newtcbtheorem[number within=section, crefname={\color{tcol_DEF!50!black} definition}{\color{tcol_DEF!50!black} definitions}, Crefname={\color{tcol_DEF!50!black} Definition}{\color{tcol_DEF!50!black} Definitions} ]{definition}{Definition}{tbox_DEF_style}{} \newtcbtheorem[use counter from=definition, crefname={\color{tcol_PRP!50!black} proposition}{\color{tcol_PRP!50!black} propositions}, Crefname={\color{tcol_PRP!50!black} Proposition}{\color{tcol_PRP!50!black} Propositions} ]{proposition}{Proposition}{tbox_PRP_style}{} \newtcbtheorem[use counter from=definition, crefname={\color{tcol_THM!50!black} theorem}{\color{tcol_THM!50!black} theorems}, Crefname={\color{tcol_THM!50!black} Theorem}{\color{tcol_THM!50!black} Theorems} ]{theorem}{Theorem}{tbox_THM_style}{} \newtcbtheorem[use counter from=definition, crefname={\color{tcol_LEM!50!black} lemma}{\color{tcol_LEM!50!black} lemmas}, Crefname={\color{tcol_LEM!50!black} Lemma}{\color{tcol_LEM!50!black} Lemmas} ]{lemma}{Lemma}{tbox_LEM_style}{} \newtcbtheorem[use counter from=definition, crefname={\color{tcol_COR!50!black} corollary}{\color{tcol_COR!50!black} corollaries}, Crefname={\color{tcol_COR!50!black} Corollary}{\color{tcol_COR!50!black} Corollaries} ]{corollary}{Corollary}{tbox_COR_style}{}
+
+\tcolorboxenvironment{proof}{boxrule=0pt,boxsep=0pt,blanker, borderline west={2pt}{0pt}{tcol_PRF},left=8pt,right=8pt,sharp corners, before skip=10pt,after skip=10pt,breakable} \tcolorboxenvironment{remark}{boxrule=0pt,boxsep=0pt,blanker, borderline west={2pt}{0pt}{tcol_REM},left=8pt,right=8pt, before skip=10pt,after skip=10pt,breakable} \tcolorboxenvironment{remarks}{boxrule=0pt,boxsep=0pt,blanker, borderline west={2pt}{0pt}{tcol_REM},left=8pt,right=8pt, before skip=10pt,after skip=10pt,breakable} \tcolorboxenvironment{example}{boxrule=0pt,boxsep=0pt,blanker, borderline west={2pt}{0pt}{tcol_EXA},left=8pt,right=8pt,sharp corners, before skip=10pt,after skip=10pt,breakable} \tcolorboxenvironment{examples}{boxrule=0pt,boxsep=0pt,blanker, borderline west={2pt}{0pt}{tcol_EXA},left=8pt,right=8pt,sharp corners, before skip=10pt,after skip=10pt,breakable}
+
+\makeatletter\newcommand\newstack[1]{\let#1\@empty}\newcommand{\addQelement}[2]{\gdef\element{#2}\pushQelement{#1}}\newcommand{\pushQelement}[1]{\xdef#1{\element+#1}}\long\def\popQ#1+#2\@nil#3{\gdef\poppedQelement{#1}\gdef#3{#2}}\long\def\peekQ#1+#2\@nil#3{\gdef\poppedQelement{#1}}\newcommand\popQelement[1]{\ifx#1\@emptyError\else\expandafter\popQ#1\@nil#1\fi}\newcommand\peekQelement[1]{\ifx#1\@emptyError\else\expandafter\peekQ#1\@nil#1\fi}\makeatother\makeatletter\usepackage{amsmath}\AtBeginDocument{\def\resetMathstrut@{\setbox\z@\hbox{\the\textfont\symoperators\char40}\ht\Mathstrutbox@\ht\z@\dp\Mathstrutbox@\dp\z@}}\makeatother\newcommand*\autooS{\peekQelement{\bracketstack}\ifthenelse{\equal{\poppedQelement}{S}}{\right\originalbardelimiterS\popQelement{\bracketstack}}{\left\originalbardelimiterS\addQelement{\bracketstack}{S}}}\newcommand*\autoop{\left(\addQelement{\bracketstack}{p}}\newcommand*\autocp{\right)\popQelement{\bracketstack}}\newcommand*\autoob{\left[\addQelement{\bracketstack}{b}}\newcommand*\autocb{\right]\popQelement{\bracketstack}}\DeclareRobustCommand*\{{\ifmmode\left\lbrace\addQelement{\bracketstack}{c}\else\textbraceleft\fi}\DeclareRobustCommand*\}{\ifmmode\right\rbrace\popQelement{\bracketstack}\else\textbraceright\fi}\newstack{\bracketstack}\addQelement{\bracketstack}{START}\newif\ifinsidebracedgroup\AtBeginDocument{\let\originalbardelimiter\|\let\originalbardelimiterS|\def\mysbar{\peekQelement{\bracketstack}\ifthenelse{\equal{\poppedQelement}{s}}{\right\originalbardelimiter\popQelement{\bracketstack}}{\left\originalbardelimiter\addQelement{\bracketstack}{s}}}\let\|\mysbar\mathcode`(32768\mathcode`)32768\mathcode`[32768\mathcode`]32768\mathcode`|32768\begingroup\lccode`\~`(\lowercase{\endgroup\let~\autoop}\begingroup\lccode`\~`)\lowercase{\endgroup\let~\autocp}\begingroup\lccode`\~`[\lowercase{\endgroup\let~\autoob}\begingroup\lccode`\~`]\lowercase{\endgroup\let~\autocb}\begingroup\lccode`\~`|\lowercase{\endgroup\let~\autooS}}\delimiterfactor1001

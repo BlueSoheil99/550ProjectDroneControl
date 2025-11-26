@@ -1,0 +1,2 @@
+\contentsline {algorithm}{\numberline {1}{\ignorespaces Main control loop with baseline LQR controller and supervisory optimal control}}{7}{algorithm.1}%
+\contentsline {algorithm}{\numberline {2}{\ignorespaces MPC collision-avoidance optimization, \texttt {drone\_opt}}}{8}{algorithm.2}%
