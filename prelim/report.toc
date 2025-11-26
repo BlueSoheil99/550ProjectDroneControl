@@ -1,4 +1,0 @@
-\contentsline {section}{List of Figures}{i}{Doc-Start}%
-\contentsline {section}{\numberline {1}Problem description}{1}{section.1}%
-\contentsline {section}{\numberline {2}Optimal control problem}{2}{section.2}%
-\contentsfinish 
