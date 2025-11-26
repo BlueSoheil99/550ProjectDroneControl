@@ -1,0 +1,101 @@
+\documentclass[12pt]{article}
+\usepackage[margin = 0.8in, headheight = 15pt]{geometry}
+\input{preamble.tex}
+
+% BibLaTeX
+\usepackage[style=ieee]{biblatex}
+\addbibresource{references.bib}
+
+\begin{document}
+	\begin{titlepage}
+		\centering
+		\vspace*{3cm}
+
+		{\Large \textbf{Course:} \uline{ME 550 -- Nonlinear Optimal Control}} \\[3em]
+
+		{\huge \textbf{Optimal Control of Multiple Drones for Obstacle Avoidance}} \\[4em]
+
+		{\Large \textbf{Group \#:} \uline{7}} \\[3em]
+
+		{\Large \textbf{Group Members}} \\[1em]
+		{\large
+			\begin{tabular}{c}
+				\uline{Soheil Keshavarz} \\[0.5em]
+				\uline{John Wang} \\[0.5em]
+				\uline{Jiakai Wen}
+			\end{tabular}
+		}
+
+		\vfill
+		{\large \today}
+	\end{titlepage}
+
+	\pagenumbering{roman}
+
+	\tableofcontents
+%	\clearpage
+
+	\listoffigures
+%	\clearpage
+
+%	\listoftables
+	\clearpage
+
+	\pagenumbering{arabic}
+
+	\section{Problem description}
+
+	The paper addresses the problem of optimal control and path planning for multiple quadrotor drones operating in a three-dimensional environment with obstacle avoidance and formation constraints \cite{SUTO20235475}. Controlling such systems presents several challenges. The Parrot Mambo drones modeled and simulated in the paper are shown in \cref{fig:ParrotMamboDrone}. The drones exhibit nonlinear and underactuated dynamics, making stabilization and trajectory tracking nontrivial. In addition, model uncertainties, external disturbances, and unmeasurable states complicate accurate control. Path planning is also difficult, as it requires real-time re-planning when encountering unanticipated obstacles or dynamic changes in the environment. Furthermore, timing constraints imposed by limited onboard hardware restrict the complexity of algorithms that can be executed in real time, while network-induced communication delays and packet loss introduce synchronization issues and affect stability in multi-drone coordination.
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.6\textwidth]{ParrotMamboDrone.pdf}
+		\caption{Parrot Mambo drone}
+		\label{fig:ParrotMamboDrone}
+	\end{figure}
+
+	To address these challenges, the paper builds upon the framework of nonsmooth barrier functions (\textcite{7937882}) and extends it to a more realistic three-dimensional setting with complex dynamics and communication effects. The authors propose an optimal control and planning framework that integrates obstacle avoidance through the use of nonsmooth barrier functions. Each drone operates with a baseline Linear Quadratic Regulator (LQR) controller and a Kalman filter running onboard in real time for stabilization and state estimation. On top of this, an off-board prediction-based optimization algorithm acts as a supervisory controller, determining the optimal control corrections and trajectories that minimize deviations from nominal paths while ensuring safety. This optimization is performed remotely to accommodate hardware constraints, and it explicitly compensates for network transmission delays by relying on predicted future states. The approach is validated in simulations using nonlinear drone models under realistic conditions with noise and delay. The overall goal is to enable multiple drones to reach their desired destinations while avoiding static and dynamic obstacles, maintaining safe distances from one another, and minimizing control effort subject to both dynamic and safety constraints.
+
+	\section{Optimal control problem}
+
+	The optimal control problem is formulated as
+	\[
+	\begin{aligned}
+		\mathbf{u}^*(\mathbf{x}) &=
+		\arg\min_{\mathbf{u} \in \mathbb{R}^m}
+		( \mathbf{u}^\top \mathbf{u} - \mathbf{u}_{\text{nom}}^\top \mathbf{u} ) \\
+		\text{s.t.} \quad &
+		\nabla h_i(\mathbf{x})^\top f(\mathbf{x}, \mathbf{u}) + \alpha(h_i(\mathbf{x})) > 0,
+		\quad i = 1, 2, \ldots, n_c.
+	\end{aligned}
+	\]
+	The goal of the optimal control problem is to modify the control input $\mathbf{u}$ as minimally as possible so that the drones avoid obstacles and each other. The cost function expresses how much the optimized control $\mathbf{u}$ deviates from the nominal control input $\mathbf{u}_{\text{nom}}$, in this case the LQR baseline controller, while encouraging less aggressive and smoother control efforts. Note that $\mathbf{x}$ and $\mathbf{u}$ represent the stacked dynamics of $n$ drones. The state vector \(\mathbf{x} = [x, y, z, \phi, \theta, \psi, \dot{x}, \dot{y}, \dot{z}, \dot{\phi}, \dot{\theta}, \dot{\psi}]^{\intercal}\) includes the position, attitude, and their derivatives, and the input vector \(\mathbf{u} = [U_{\text{coll}}, U_{\phi}, U_{\theta}, U_{\psi}]^{\intercal}\) represents the collective force and rotational torques (for roll, pitch, and yaw). The coordinate frame and attitude angles \((\phi, \theta, \psi)\) are illustrated in Fig.~\ref{fig:ParrotMamboDrone}.
+
+	The constraint of the optimal control problem is a \textit{safety constraint} known as a \textit{control barrier function (CBF) constraint}. In essence, the constraint prescribes the minimum distance between any two drones or between a drone and an obstacle. This state-dependent inequality constraint ensures that the system's state remains within a predefined safe region $\mathcal{C} = \{\mathbf{x} \in \mathbb{R}^n \mid h_i(\mathbf{x}) \ge 0\}$, which depends on how the system evolves under the control-affine continuous-time dynamics $\dot{\mathbf{x}}(t) = f(\mathbf{x}) + G(\mathbf{x})\mathbf{u}$. Here, $h_i(\mathbf{x})$ are continuously differentiable candidate nonsmooth barrier functions corresponding to obstacle avoidance between two drones $i$ and $j$, or between a drone $i$ and an obstacle $j$.
+
+	Consider $n$ drones in 3D space, each with a predefined control law that drives the drones from their initial to final positions, and $m$ ball-shaped obstacles in the environment. The goal is to modify the control input $\mathbf{u}$ as little as possible so that the drones avoid obstacles and each other. To ensure safe flight, the minimum distance between the positions of two drones $\xi_i$ and $\xi_j$ should be at least $r_{ij}$, and the distance between the position of a drone $\xi_i$ and an obstacle $\xi_j^{o}$ should be at least $r_j^{o}$. The constraints are defined as:
+	\[
+	\begin{aligned}
+		h_{ij}^{d}(\xi) &= \|\xi_i - \xi_j\|^2 - r_{ij}^2 \ge 0,
+		&& i, j = 1, 2, \ldots, n, \\
+		h_{ij}^{o}(\xi) &= \|\xi_i - \xi_j^{o}\|^2 - (r_j^{o})^2 \ge 0,
+		&& i = 1, 2, \ldots, n, \; j = 1, 2, \ldots, m.
+	\end{aligned}
+	\]
+
+	The optimal control problem discussed above is not easy to solve because the constraints involve only positions and not the full states. Additionally, implementation on the Parrot Mambo drones requires a discrete-time solution. Thus, the following optimal control problem in terms of the drone velocities $\dot{\xi}$ is proposed:
+	\[
+	\begin{aligned}
+		\dot{\xi}^{\text{opt}}[k] &=
+		\arg\min_{\dot{\xi}}
+		\|\dot{\xi}^{\text{pred}}[k] - \dot{\xi}[k]\|^2 \\
+		\text{s.t.} \quad &
+		\nabla h_i(\xi^{p}[k])^{T} \dot{\xi}[k] + \alpha(h_i(\xi[k])) \ge 0,
+		\quad i = 1, 2, \ldots, n_c.
+	\end{aligned}
+	\]
+	The prediction-based optimization problem takes a similar form to the previous formulation. However, the cost function now considers the Euclidean norm of the velocity difference between the optimized and nominal control. Additionally, the control barrier function constraint for the minimum distance between two drones or a drone and an obstacle is reformulated as a function of $\xi$. The optimal control input $U_{\theta}^{\text{opt}}[k]$ is recovered from the discrete-time linear model by back-calculating it from the predicted states and the optimized velocity using finite differences.
+
+	\printbibliography
+
+\end{document}
